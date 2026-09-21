@@ -29,19 +29,19 @@ export const WelcomeOverview: React.FC = () => {
 
       <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
         <section className="rounded-2xl border border-black/8 bg-white/75 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/5" aria-labelledby="quote-title">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-700"><Quote className="size-4" /> The principle</div>
-          <h2 id="quote-title" className="mt-5 max-w-xl text-2xl font-medium leading-tight tracking-tight text-stone-900 dark:text-white">{state.heroQuote.text}</h2>
-          <p className="mt-4 text-xs text-stone-700">{state.heroQuote.author}</p>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400"><Quote className="size-4" /> The principle</div>
+          <h2 id="quote-title" className="mt-5 max-w-xl text-2xl font-medium leading-tight tracking-tight text-slate-700 dark:text-slate-300">{state.heroQuote.text}</h2>
+          <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">{state.heroQuote.author}</p>
         </section>
         <section className="rounded-2xl border border-black/8 bg-white/75 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/5" aria-labelledby="month-title">
-          <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-700"><CalendarDays className="size-4" /> Monthly summary</div><span className="rounded-full bg-[#e9f0e4] px-2 py-1 text-[10px] font-bold text-[#31523b]">Live plan</span></div>
-          <h2 id="month-title" className="mt-5 text-xl font-semibold tracking-tight text-stone-900 dark:text-white">{latestMonth?.monthName || 'This month'}</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3"><div><p className="text-xs text-stone-700">Planned inflow</p><p className="mt-1 font-mono-num text-sm font-semibold text-stone-900 dark:text-white">{formatTZS(latestMonth?.plannedIncome || 0)}</p></div><div><p className="text-xs text-stone-700">Net cushion</p><p className="mt-1 font-mono-num text-sm font-semibold text-emerald-700 dark:text-emerald-400">{formatTZS(masterCalc.monthlyCashFlowAfterDebt)}</p></div></div>
+          <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400"><CalendarDays className="size-4" /> Monthly summary</div><span className="rounded-full bg-[#e9f0e4] px-2 py-1 text-[10px] font-bold text-[#31523b]">Live plan</span></div>
+          <h2 id="month-title" className="mt-5 text-xl font-semibold tracking-tight text-slate-700 dark:text-slate-300">{latestMonth?.monthName || 'This month'}</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3"><div><p className="text-xs text-slate-500 dark:text-slate-400">Planned inflow</p><p className="mt-1 font-mono-num text-sm font-semibold text-slate-700 dark:text-slate-300">{formatTZS(latestMonth?.plannedIncome || 0)}</p></div><div><p className="text-xs text-stone-700">Net cushion</p><p className="mt-1 font-mono-num text-sm font-semibold text-emerald-700 dark:text-emerald-400">{formatTZS(masterCalc.monthlyCashFlowAfterDebt)}</p></div></div>
         </section>
       </div>
 
       <section className="rounded-2xl border border-black/8 bg-[#f2eee7] p-5 dark:border-white/10 dark:bg-white/5" aria-label="Workspace shortcuts">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-700">Your workspace</p><p className="mt-1 text-sm text-stone-700 dark:text-stone-300">Use the menu to move between ideas, plans, and numbers.</p></div><button type="button" onClick={() => setActiveTab('diary')} className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 dark:border-white/15 dark:bg-white/10 dark:text-white"><BookOpen className="size-4" /> Continue writing</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-700">Your workspace</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Use the menu to move between ideas, plans, and numbers.</p></div><button type="button" onClick={() => setActiveTab('diary')} className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-50 dark:border-white/15 dark:bg-white/10 dark:text-white"><BookOpen className="size-4" /> Continue writing</button></div>
       </section>
     </div>
   );
