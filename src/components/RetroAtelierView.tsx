@@ -19,8 +19,12 @@ import {
 } from 'lucide-react';
 
 export const RetroAtelierView: React.FC = () => {
-  const { state, setActiveTab, updateRetroAtelier, retroAtelierCalc } = useKairos();
+  const { state, setActiveTab, updateRetroAtelier } = useKairos();
   const ra = state.retroAtelier;
+  const projectedAnnualProfit = ra.targetMonthlyProfit * 12;
+  const projectedAnnualROI = ra.estimatedCapitalRequired > 0
+    ? (projectedAnnualProfit / ra.estimatedCapitalRequired) * 100
+    : 0;
 
   return (
     <div className="space-y-8 pb-12">
@@ -111,8 +115,8 @@ export const RetroAtelierView: React.FC = () => {
 
         <StatCard
           label="Projected Annual Profit"
-          value={formatTZS(retroAtelierCalc.projectedAnnualProfit)}
-          subValue={`Projected ROI: ${formatPercent(retroAtelierCalc.projectedAnnualROI, 1)}`}
+          value={formatTZS(projectedAnnualProfit)}
+          subValue={`Projected ROI: ${formatPercent(projectedAnnualROI, 1)}`}
           badge={{ text: 'Stabilized APEX Run-rate', variant: 'success' }}
           icon={<Sparkles className="h-4 w-4" />}
         />
