@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-kairos-forest: #12221d;
+  --color-kairos-sage: #c2d6b9;
+  --color-kairos-paper: #f7f4ef;
+}
+
 @layer base {
+  :root {
+    color-scheme: light;
+    background: var(--color-kairos-paper);
+  }
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--color-kairos-paper);
   }
 }
 

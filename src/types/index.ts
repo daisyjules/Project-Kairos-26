@@ -224,6 +224,7 @@ export type TabKey =
   | 'zanzibar'
   | 'poultry'
   | 'mama_kubwa'
+  | 'steazy'
   | 'utt'
   | 'loan'
   | 'allocation'

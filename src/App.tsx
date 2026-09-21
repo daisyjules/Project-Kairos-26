@@ -3,6 +3,8 @@ import { KairosProvider, useKairos } from './context/KairosContext';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MasterDashboard } from './components/MasterDashboard';
+import { WelcomeOverview } from './components/WelcomeOverview';
+import { SteazyView } from './components/SteazyView';
 import { DiaryView } from './components/DiaryView';
 import { AllocationView } from './components/AllocationView';
 import { KlinFitzView } from './components/KlinFitzView';
@@ -25,7 +27,7 @@ const DashboardContent: React.FC = () => {
     switch (state.activeTab) {
       case 'dashboard':
       case 'master' as any:
-        return <MasterDashboard />;
+        return <WelcomeOverview />;
       case 'diary':
         return <DiaryView />;
       case 'allocation':
@@ -38,6 +40,8 @@ const DashboardContent: React.FC = () => {
         return <PoultryView />;
       case 'mama_kubwa':
         return <MamaKubwaView />;
+      case 'steazy':
+        return <SteazyView />;
       case 'utt':
         return <UTTView />;
       case 'car_laptop':
