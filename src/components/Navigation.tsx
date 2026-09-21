@@ -102,7 +102,7 @@ export const Navigation: React.FC = () => {
 
   return (
     <nav className="rounded-xl border border-gray-200 bg-white p-1.5 shadow-2xs">
-      <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none">
+      <div className="flex items-center justify-between gap-1">
         {/* Primary Tabs */}
         <div className="flex items-center gap-1 min-w-max">
           {primaryTabs.map((tab) => {

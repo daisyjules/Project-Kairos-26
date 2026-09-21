@@ -27,7 +27,12 @@ const DashboardContent: React.FC = () => {
     switch (state.activeTab) {
       case 'dashboard':
       case 'master' as any:
-        return <WelcomeOverview />;
+        return (
+          <div className="flex flex-col gap-8">
+            <WelcomeOverview />
+            <MasterDashboard />
+          </div>
+        );
       case 'diary':
         return <DiaryView />;
       case 'allocation':
