@@ -1,0 +1,8 @@
+{
+  "name": "Project Kairos 26",
+  "description": "Founder and investment capital deployment dashboard for managing TZS 30M loan, modeling cash flow engines, debt coverage, and the APEX ecosystem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
