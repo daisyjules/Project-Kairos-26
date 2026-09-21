@@ -78,24 +78,8 @@ const DashboardContent: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      {/* Minimal Clean Footer */}
-      <footer className="border-t border-gray-200/80 bg-white/70 backdrop-blur-xs py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-bold">
-              K
-            </div>
-            <span className="font-semibold text-gray-900 tracking-tight">
-              PROJECT KAIROS 26
-            </span>
-            <span className="text-gray-300">•</span>
-            <span>Founder Capital Deployment & Modeling</span>
-          </div>
-
-          <div className="text-gray-400 text-[11px]">
-            TZS 30,000,000 Allocation • Debt Service Coverage • Cashflow Engines
-          </div>
-        </div>
+      <footer className="border-t border-gray-200/80 py-5 text-center text-xs text-gray-400">
+        Project Kairos 26 · Founder capital planning
       </footer>
     </div>
   );
