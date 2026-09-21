@@ -4,6 +4,7 @@ import {
   Shirt,
   Palmtree,
   Egg,
+  Sprout,
   TrendingUp,
   CreditCard,
   PieChart,
@@ -40,6 +41,7 @@ export const Navigation: React.FC = () => {
     { key: 'klinfitz', label: 'Klin Fitz', icon: <Shirt className="h-4 w-4" /> },
     { key: 'zanzibar', label: 'Zanzibar Airbnb', icon: <Palmtree className="h-4 w-4" /> },
     { key: 'poultry', label: 'Mom’s Poultry', icon: <Egg className="h-4 w-4" /> },
+    { key: 'mama_kubwa', label: 'Mama Kubwa', icon: <Sprout className="h-4 w-4" /> },
     { key: 'utt', label: 'UTT Wealth', icon: <TrendingUp className="h-4 w-4" /> },
     {
       key: 'loan',

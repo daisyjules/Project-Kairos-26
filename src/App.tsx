@@ -8,6 +8,7 @@ import { AllocationView } from './components/AllocationView';
 import { KlinFitzView } from './components/KlinFitzView';
 import { ZanzibarView } from './components/ZanzibarView';
 import { PoultryView } from './components/PoultryView';
+import { MamaKubwaView } from './components/MamaKubwaView';
 import { UTTView } from './components/UTTView';
 import { CarLaptopView } from './components/CarLaptopView';
 import { LoanDashboardView } from './components/LoanDashboardView';
@@ -35,6 +36,8 @@ const DashboardContent: React.FC = () => {
         return <ZanzibarView />;
       case 'poultry':
         return <PoultryView />;
+      case 'mama_kubwa':
+        return <MamaKubwaView />;
       case 'utt':
         return <UTTView />;
       case 'car_laptop':
