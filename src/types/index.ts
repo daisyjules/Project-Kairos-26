@@ -223,6 +223,8 @@ export type TabKey =
   | 'klinfitz'
   | 'zanzibar'
   | 'poultry'
+  | 'mama_kubwa'
+  | 'steazy'
   | 'utt'
   | 'loan'
   | 'allocation'

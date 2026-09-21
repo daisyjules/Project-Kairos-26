@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Shirt,
+  Palette,
   Palmtree,
   Egg,
+  Sprout,
   TrendingUp,
   CreditCard,
   PieChart,
@@ -37,10 +39,15 @@ export const Navigation: React.FC = () => {
   const primaryTabs: { key: TabKey; label: string; icon: React.ReactNode; badge?: string; badgeColor?: string }[] = [
     { key: 'dashboard', label: 'Overview', icon: <LayoutDashboard className="h-4 w-4" /> },
     { key: 'diary', label: 'Diary', icon: <Sparkles className="h-4 w-4 text-amber-500" /> },
-    { key: 'klinfitz', label: 'Klin Fitz', icon: <Shirt className="h-4 w-4" /> },
-    { key: 'zanzibar', label: 'Zanzibar Airbnb', icon: <Palmtree className="h-4 w-4" /> },
-    { key: 'poultry', label: 'Mom’s Poultry', icon: <Egg className="h-4 w-4" /> },
-    { key: 'utt', label: 'UTT Wealth', icon: <TrendingUp className="h-4 w-4" /> },
+  ];
+
+  const projectTabs: { key: TabKey; label: string; desc: string; icon: React.ReactNode }[] = [
+    { key: 'klinfitz', label: 'Klin Fitz', desc: 'Laundry and recurring cashflow', icon: <Shirt className="h-4 w-4" /> },
+    { key: 'steazy', label: 'Steazy', desc: 'Clothing and accessories brand', icon: <Palette className="h-4 w-4" /> },
+    { key: 'zanzibar', label: 'Zanzibar Airbnb', desc: 'Hospitality joint venture', icon: <Palmtree className="h-4 w-4" /> },
+    { key: 'poultry', label: 'Mom’s Poultry', desc: 'Family poultry pilot', icon: <Egg className="h-4 w-4" /> },
+    { key: 'mama_kubwa', label: 'Mama Kubwa', desc: 'Crop and spice supply', icon: <Sprout className="h-4 w-4" /> },
+    { key: 'utt', label: 'UTT Wealth', desc: 'Long-term wealth building', icon: <TrendingUp className="h-4 w-4" /> },
     {
       key: 'loan',
       label: 'Debt & Solvency',
@@ -51,6 +58,7 @@ export const Navigation: React.FC = () => {
   ];
 
   const secondaryTabs: { key: TabKey; label: string; desc: string; icon: React.ReactNode }[] = [
+    ...projectTabs,
     {
       key: 'allocation',
       label: '30M Allocations',
@@ -94,7 +102,7 @@ export const Navigation: React.FC = () => {
 
   return (
     <nav className="rounded-xl border border-gray-200 bg-white p-1.5 shadow-2xs">
-      <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none">
+      <div className="flex items-center justify-between gap-1">
         {/* Primary Tabs */}
         <div className="flex items-center gap-1 min-w-max">
           {primaryTabs.map((tab) => {
@@ -146,7 +154,7 @@ export const Navigation: React.FC = () => {
             }`}
           >
             <Layers className="h-3.5 w-3.5 text-gray-400" />
-            <span>{isSecondaryActive ? activeSecondaryItem?.label.split(' ')[0] + '...' : 'More'}</span>
+            <span>{isSecondaryActive ? activeSecondaryItem?.label.split(' ')[0] + '...' : 'Menu'}</span>
             <ChevronDown
               className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-150 ${
                 isMoreOpen ? 'rotate-180' : ''
@@ -158,7 +166,7 @@ export const Navigation: React.FC = () => {
           {isMoreOpen && (
             <div className="absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg z-50 animate-in fade-in duration-100">
               <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
-                More Modules
+                Workspace menu
               </div>
               <div className="space-y-0.5">
                 {secondaryTabs.map((item) => {

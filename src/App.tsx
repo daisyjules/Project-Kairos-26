@@ -3,11 +3,14 @@ import { KairosProvider, useKairos } from './context/KairosContext';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { MasterDashboard } from './components/MasterDashboard';
+import { WelcomeOverview } from './components/WelcomeOverview';
+import { SteazyView } from './components/SteazyView';
 import { DiaryView } from './components/DiaryView';
 import { AllocationView } from './components/AllocationView';
 import { KlinFitzView } from './components/KlinFitzView';
 import { ZanzibarView } from './components/ZanzibarView';
 import { PoultryView } from './components/PoultryView';
+import { MamaKubwaView } from './components/MamaKubwaView';
 import { UTTView } from './components/UTTView';
 import { CarLaptopView } from './components/CarLaptopView';
 import { LoanDashboardView } from './components/LoanDashboardView';
@@ -24,7 +27,12 @@ const DashboardContent: React.FC = () => {
     switch (state.activeTab) {
       case 'dashboard':
       case 'master' as any:
-        return <MasterDashboard />;
+        return (
+          <div className="flex flex-col gap-8">
+            <WelcomeOverview />
+            <MasterDashboard />
+          </div>
+        );
       case 'diary':
         return <DiaryView />;
       case 'allocation':
@@ -35,6 +43,10 @@ const DashboardContent: React.FC = () => {
         return <ZanzibarView />;
       case 'poultry':
         return <PoultryView />;
+      case 'mama_kubwa':
+        return <MamaKubwaView />;
+      case 'steazy':
+        return <SteazyView />;
       case 'utt':
         return <UTTView />;
       case 'car_laptop':
@@ -78,24 +90,8 @@ const DashboardContent: React.FC = () => {
         </AnimatePresence>
       </main>
 
-      {/* Minimal Clean Footer */}
-      <footer className="border-t border-gray-200/80 bg-white/70 backdrop-blur-xs py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-900 text-white text-xs font-bold">
-              K
-            </div>
-            <span className="font-semibold text-gray-900 tracking-tight">
-              PROJECT KAIROS 26
-            </span>
-            <span className="text-gray-300">•</span>
-            <span>Founder Capital Deployment & Modeling</span>
-          </div>
-
-          <div className="text-gray-400 text-[11px]">
-            TZS 30,000,000 Allocation • Debt Service Coverage • Cashflow Engines
-          </div>
-        </div>
+      <footer className="border-t border-gray-200/80 py-5 text-center text-xs text-gray-400">
+        Project Kairos 26 · Founder capital planning
       </footer>
     </div>
   );

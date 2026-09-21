@@ -5,21 +5,12 @@ import {
   BookOpen,
   Plus,
   Calendar,
-  Sparkles,
-  Tag,
   Trash2,
   Edit3,
-  CheckCircle2,
-  Heart,
   Quote,
-  Smile,
-  Compass,
   Pin,
   MessageSquare,
-  MessageCircle,
 } from 'lucide-react';
-import journalCoverImg from '../assets/images/journal_cover_1787307740725.jpg';
-import { PinnedCorkboard } from './PinnedCorkboard';
 import { CommentsSection } from './CommentsSection';
 import { EditableText } from './EditableText';
 
@@ -108,75 +99,35 @@ export const DiaryView: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* 1. Warm Hero Banner with Image */}
-      <div className="relative overflow-hidden rounded-3xl border border-stone-200/90 bg-white dark:border-stone-800/80 dark:bg-stone-900 shadow-xs">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-          {/* Left Column: Personal Greeting & Note */}
-          <div className="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100/70 px-3 py-1 text-xs font-semibold text-[#1E3A2F] dark:bg-emerald-950/60 dark:text-emerald-300 mb-3">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Founder's Personal Diary & Reflection Log</span>
-              </div>
+    <div className="space-y-6 pb-12">
+      <header className="flex flex-col gap-4 border-b border-stone-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Founder&apos;s diary</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">Think clearly. Build patiently.</h1>
+          <p className="mt-2 text-sm leading-relaxed text-stone-600">A private record of decisions, lessons, and the work behind Project Kairos.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setEditingId(null); setTitle(''); setContent(''); setIsWritingNew(true); }}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#1E3A2F] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#2C4A3E]"
+        >
+          <Plus className="h-4 w-4" />
+          New entry
+        </button>
+      </header>
 
-              <h1 className="font-editorial text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-                Reflections, Comments & Pinned Notes
-              </h1>
-
-              <p className="mt-2 font-serif-body text-stone-600 dark:text-stone-300 text-sm leading-relaxed max-w-xl">
-                A private, honest record of what is working, conversations with Mom and Alice,
-                milestones hit, and how the 30M deployment is protecting our long-term freedom.
-              </p>
-
-              <div className="mt-4 p-3.5 rounded-2xl bg-[#FDFBF7] dark:bg-stone-800/60 border border-amber-200/60 dark:border-stone-700/60 text-xs flex items-start gap-2.5">
-                <Quote className="h-4 w-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-                <p className="font-handwriting text-base text-stone-700 dark:text-stone-200 leading-snug">
-                  “We did not take the 30M loan to feel busy. We took it to buy real assets that generate cash while we live peacefully.”
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setTitle('');
-                  setContent('');
-                  setIsWritingNew(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-2xl bg-[#1E3A2F] px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#2C4A3E] transition-all cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Write New Diary Reflection</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Right Column: Mood Image */}
-          <div className="lg:col-span-5 relative min-h-[220px] lg:min-h-full">
-            <img
-              src={journalCoverImg}
-              alt="Personal journal and coffee"
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover rounded-b-3xl lg:rounded-b-none lg:rounded-r-3xl"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent lg:hidden" />
-            <div className="absolute bottom-3 left-4 text-white font-handwriting text-base font-semibold drop-shadow-md lg:hidden">
-              📖 Honest thoughts, day by day
-            </div>
+      <section className="rounded-xl border border-stone-200 bg-[#FDFBF7] p-5 sm:p-6" aria-labelledby="founders-insight-title">
+        <div className="flex items-start gap-3">
+          <Quote className="mt-0.5 h-4 w-4 shrink-0 text-[#1E3A2F]" />
+          <div>
+            <p id="founders-insight-title" className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Founder&apos;s insight</p>
+            <blockquote className="mt-2 max-w-3xl text-base leading-relaxed text-stone-800 sm:text-lg">“We did not take the 30M loan to feel busy. We took it to buy real assets that generate cash while we live peacefully.”</blockquote>
+            <p className="mt-3 text-xs text-stone-500">A reminder to prioritize durable cash flow over visible activity.</p>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* 2. Pinned Corkboard Highlight */}
-      <PinnedCorkboard
-        filterTarget="all"
-        title="Pinned Focus Notes & Operating Rules"
-      />
-
-      {/* 3. New Entry / Edit Form */}
+      {/* New Entry / Edit Form */}
       {isWritingNew && (
         <div className="rounded-3xl border border-emerald-600/40 bg-white p-6 sm:p-8 dark:border-emerald-600/40 dark:bg-stone-900 shadow-md transition-all">
           <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3 mb-4">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useKairos } from '../context/KairosContext';
 import { formatTZS, formatRatio } from '../utils/formatters';
-import { BookOpen, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { masterCalc, setActiveTab } = useKairos();
@@ -30,7 +30,7 @@ export const Header: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-gray-500">
-                Founder capital deployment, cash flow engines & debt coverage
+                A clear view of capital, cash flow, and next decisions
               </p>
             </div>
           </div>
@@ -54,21 +54,10 @@ export const Header: React.FC = () => {
               </span>
             </div>
 
-            {/* DSCR Health Pill */}
-            <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <div className="hidden items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-2xs sm:flex">
+              <span className="size-2 rounded-full bg-emerald-600" />
               <span>DSCR {formatRatio(masterCalc.dscr)}</span>
             </div>
-
-            {/* Diary Button Shortcut */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('diary')}
-              className="flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
-            >
-              <BookOpen className="h-3.5 w-3.5 text-gray-600" />
-              <span>Diary</span>
-            </button>
           </div>
         </div>
 
