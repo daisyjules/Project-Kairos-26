@@ -197,6 +197,18 @@ export interface DSEPortfolioModel {
     timestamp: string;
   };
   reflectLiveDSEPricing?: boolean;
+  targetTotalValuation?: number;
+}
+
+export interface SalarySavingsModel {
+  monthlyNetSalary: number;
+  monthlyLivingExpenses: number;
+  loanRepaymentDeduction: number;
+  monthlyAllocatedToDSE: number;
+  monthlyAllocatedToUTT: number;
+  monthlyAllocatedToEmergency: number;
+  savingsGoalMonths: number;
+  historicalSavingsTotal: number;
 }
 
 export interface RetroAtelierModel {
@@ -278,6 +290,7 @@ export type TabKey =
   | 'poultry'
   | 'mama_kubwa'
   | 'dse'
+  | 'salary_savings'
   | 'utt'
   | 'loan'
   | 'allocation'
@@ -300,6 +313,7 @@ export interface KairosState {
   zanzibarAirbnb: ZanzibarAirbnbModel;
   poultry: PoultryModel;
   dsePortfolio: DSEPortfolioModel;
+  salarySavings: SalarySavingsModel;
   utt: UTTModel;
   car: CarModel;
   laptop: LaptopModel;

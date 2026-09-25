@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Layers,
   Landmark,
+  Wallet,
 } from 'lucide-react';
 import { useKairos } from '../context/KairosContext';
 import { TabKey } from '../types';
@@ -56,6 +57,7 @@ export const Navigation: React.FC = () => {
     { key: 'poultry', label: 'Mom’s Poultry', desc: 'Family poultry pilot', icon: <Egg className="h-4 w-4" /> },
     { key: 'mama_kubwa', label: 'Mama Kubwa', desc: 'Crop and spice supply', icon: <Sprout className="h-4 w-4" /> },
     { key: 'dse', label: 'DSE Shares', desc: 'Direct DSE market prices & ledger', icon: <Landmark className="h-4 w-4" /> },
+    { key: 'salary_savings', label: 'Salary Savings', desc: 'Monthly savings & DCA capability evaluator', icon: <Wallet className="h-4 w-4" /> },
     { key: 'utt', label: 'UTT Liquid Fund', desc: 'Liquid reserve & compounding', icon: <TrendingUp className="h-4 w-4" /> },
     {
       key: 'loan',

@@ -11,6 +11,7 @@ import {
   LoanModel,
   RetroAtelierModel,
   MonthlyRecord,
+  SalarySavingsModel,
 } from '../types';
 
 export interface KlinFitzCalculations {
@@ -644,5 +645,104 @@ export function calculateMasterDashboard(
     totalInvestmentValue,
     totalLiquidCapital,
     liquidRunwayMonths,
+  };
+}
+
+export interface SalarySavingsCalculations {
+  monthlyNetSalary: number;
+  totalMonthlyExpenses: number;
+  monthlySavingsCapacity: number;
+  savingsRatePct: number;
+  totalAllocatedSavings: number;
+  unallocatedSurplus: number;
+  annualDSESavings: number;
+  annualUTTSavings: number;
+  annualEmergencySavings: number;
+  annualTotalSavings: number;
+  fiveYearProjectedDSE: number;
+  fiveYearProjectedUTT: number;
+  fiveYearTotalNetWorthGain: number;
+  monthsTo5MMilestoneDSE: number;
+  monthsTo10MMilestoneDSE: number;
+  emergencyFundCoverageMonths: number;
+  savingsStatus: 'HEALTHY' | 'MODERATE' | 'TIGHT' | 'DEFICIT';
+}
+
+export function calculateSalarySavings(
+  salary: SalarySavingsModel,
+  currentDSEValue: number = 0,
+  currentEmergencyCash: number = 0
+): SalarySavingsCalculations {
+  const monthlyNetSalary = Math.max(0, salary?.monthlyNetSalary || 0);
+  const totalMonthlyExpenses = Math.max(
+    0,
+    (salary?.monthlyLivingExpenses || 0) + (salary?.loanRepaymentDeduction || 0)
+  );
+  const monthlySavingsCapacity = Math.max(0, monthlyNetSalary - totalMonthlyExpenses);
+  const savingsRatePct = monthlyNetSalary > 0 ? (monthlySavingsCapacity / monthlyNetSalary) * 100 : 0;
+
+  const dseMonthly = Math.max(0, salary?.monthlyAllocatedToDSE || 0);
+  const uttMonthly = Math.max(0, salary?.monthlyAllocatedToUTT || 0);
+  const emergencyMonthly = Math.max(0, salary?.monthlyAllocatedToEmergency || 0);
+  const totalAllocatedSavings = dseMonthly + uttMonthly + emergencyMonthly;
+  const unallocatedSurplus = monthlySavingsCapacity - totalAllocatedSavings;
+
+  const annualDSESavings = dseMonthly * 12;
+  const annualUTTSavings = uttMonthly * 12;
+  const annualEmergencySavings = emergencyMonthly * 12;
+  const annualTotalSavings = totalAllocatedSavings * 12;
+
+  // 5-year projections (conservative 10% on DSE and 13% on UTT)
+  const rDSE = 0.1 / 12;
+  const rUTT = 0.13 / 12;
+  const nMonths = 60;
+
+  const fiveYearProjectedDSE =
+    dseMonthly > 0 ? dseMonthly * ((Math.pow(1 + rDSE, nMonths) - 1) / rDSE) : 0;
+  const fiveYearProjectedUTT =
+    uttMonthly > 0 ? uttMonthly * ((Math.pow(1 + rUTT, nMonths) - 1) / rUTT) : 0;
+  const fiveYearTotalNetWorthGain =
+    fiveYearProjectedDSE + fiveYearProjectedUTT + emergencyMonthly * 60;
+
+  const remainingTo5M = Math.max(0, 5_000_000 - currentDSEValue);
+  const monthsTo5MMilestoneDSE =
+    dseMonthly > 0 ? Number((remainingTo5M / dseMonthly).toFixed(1)) : 999;
+
+  const remainingTo10M = Math.max(0, 10_000_000 - currentDSEValue);
+  const monthsTo10MMilestoneDSE =
+    dseMonthly > 0 ? Number((remainingTo10M / dseMonthly).toFixed(1)) : 999;
+
+  const livingExp = salary?.monthlyLivingExpenses || 1;
+  const emergencyFundCoverageMonths = Number((currentEmergencyCash / livingExp).toFixed(1));
+
+  let savingsStatus: 'HEALTHY' | 'MODERATE' | 'TIGHT' | 'DEFICIT' = 'HEALTHY';
+  if (monthlyNetSalary <= 0 || monthlyNetSalary < totalMonthlyExpenses) {
+    savingsStatus = 'DEFICIT';
+  } else if (savingsRatePct < 15) {
+    savingsStatus = 'TIGHT';
+  } else if (savingsRatePct < 25) {
+    savingsStatus = 'MODERATE';
+  } else {
+    savingsStatus = 'HEALTHY';
+  }
+
+  return {
+    monthlyNetSalary,
+    totalMonthlyExpenses,
+    monthlySavingsCapacity,
+    savingsRatePct: Number(savingsRatePct.toFixed(1)),
+    totalAllocatedSavings,
+    unallocatedSurplus,
+    annualDSESavings,
+    annualUTTSavings,
+    annualEmergencySavings,
+    annualTotalSavings,
+    fiveYearProjectedDSE: Math.round(fiveYearProjectedDSE),
+    fiveYearProjectedUTT: Math.round(fiveYearProjectedUTT),
+    fiveYearTotalNetWorthGain: Math.round(fiveYearTotalNetWorthGain),
+    monthsTo5MMilestoneDSE,
+    monthsTo10MMilestoneDSE,
+    emergencyFundCoverageMonths,
+    savingsStatus,
   };
 }

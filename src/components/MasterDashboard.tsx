@@ -17,6 +17,7 @@ import {
   Sparkles,
   Tag,
   Landmark,
+  Wallet,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -54,6 +55,7 @@ export const MasterDashboard: React.FC = () => {
     poultryCalc,
     dseCalc,
     uttCalc,
+    salarySavingsCalc,
     updateHeroQuote,
   } = useKairos();
 
@@ -583,6 +585,58 @@ export const MasterDashboard: React.FC = () => {
 
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-700 group-hover:text-black">
                 <span>View DSE Market Quotes & Add Company</span>
+                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4c: Salary Savings & DCA Evaluator */}
+          <div
+            onClick={() => setActiveTab('salary_savings')}
+            className="group rounded-xl border border-indigo-200 bg-gradient-to-b from-indigo-50/40 to-white overflow-hidden shadow-2xs hover:border-indigo-600 hover:shadow-xs transition-all cursor-pointer flex flex-col"
+          >
+            <div className="p-4 border-b border-indigo-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg bg-indigo-600 text-white p-2">
+                  <Wallet className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-950">
+                    Salary Savings & DCA
+                  </h3>
+                  <p className="text-[11px] text-indigo-700 font-semibold">
+                    {salarySavingsCalc.savingsRatePct}% Net Salary Saved
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-900 font-mono-num">
+                {formatTZS(salarySavingsCalc.monthlySavingsCapacity, true)}/mo
+              </span>
+            </div>
+
+            <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  Evaluate monthly saving capability and dollar-cost average salary into DSE stocks & UTT fund.
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono-num">
+                  <div className="p-2 rounded bg-white border border-indigo-100">
+                    <span className="text-gray-500 block text-[10px]">DSE DCA / mo</span>
+                    <span className="font-bold text-stone-900">
+                      {formatTZS(state.salarySavings.monthlyAllocatedToDSE, true)}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded bg-white border border-indigo-100">
+                    <span className="text-gray-500 block text-[10px]">UTT Savings / mo</span>
+                    <span className="font-bold text-indigo-900">
+                      {formatTZS(state.salarySavings.monthlyAllocatedToUTT, true)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-indigo-100 flex items-center justify-between text-xs font-semibold text-indigo-900 group-hover:text-black">
+                <span>Evaluate Saving Capability & Runway</span>
                 <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>

@@ -21,6 +21,7 @@ import {
   PinnedNote,
   ScenarioType,
   TabKey,
+  SalarySavingsModel,
 } from '../types';
 import {
   calculateKlinFitz,
@@ -32,6 +33,7 @@ import {
   calculateCar,
   calculateLoan,
   calculateMasterDashboard,
+  calculateSalarySavings,
   KlinFitzCalculations,
   SteazyCalculations,
   ZanzibarCalculations,
@@ -41,6 +43,7 @@ import {
   CarCalculations,
   LoanCalculations,
   MasterCalculations,
+  SalarySavingsCalculations,
 } from '../utils/calculations';
 import { OFFICIAL_DSE_QUOTES } from '../data/dseEquities';
 
@@ -262,6 +265,16 @@ export const INITIAL_STATE: KairosState = {
     lastUpdated: new Date().toISOString(),
     milestonesReached: [],
     reflectLiveDSEPricing: true,
+  },
+  salarySavings: {
+    monthlyNetSalary: 2_500_000,
+    monthlyLivingExpenses: 1_200_000,
+    loanRepaymentDeduction: 0,
+    monthlyAllocatedToDSE: 500_000,
+    monthlyAllocatedToUTT: 400_000,
+    monthlyAllocatedToEmergency: 200_000,
+    savingsGoalMonths: 12,
+    historicalSavingsTotal: 0,
   },
   utt: {
     investmentAmount: 10_000_000,
@@ -543,7 +556,11 @@ interface KairosContextType {
   syncDSEMarketData: () => void;
   reflectOfficialDSEPrices: () => void;
   restoreDefaultDSEHoldings: () => void;
+  setTotalDSEValuation: (targetValuation: number, mode?: 'reconcile_cash' | 'scale_shares') => void;
+  updateDSEHoldingValue: (id: string, targetValue: number, mode?: 'adjust_shares' | 'adjust_price') => void;
   recordDSEMilestoneDecision: (milestone: number, decision: 'withdraw' | 'reinvest_utt' | 'hold_compound') => void;
+  updateSalarySavings: (salary: Partial<SalarySavingsModel>) => void;
+  logMonthlySalarySavings: () => void;
   updateUTT: (utt: Partial<UTTModel>) => void;
   redeemUTTLiquid: (amount: number) => void;
   depositToUTT: (amount: number) => void;
@@ -584,6 +601,7 @@ interface KairosContextType {
   carCalc: CarCalculations;
   loanCalc: LoanCalculations;
   masterCalc: MasterCalculations;
+  salarySavingsCalc: SalarySavingsCalculations;
 }
 
 const KairosContext = createContext<KairosContextType | undefined>(undefined);
@@ -646,6 +664,7 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               reflectLiveDSEPricing: true,
             };
           })(),
+          salarySavings: { ...INITIAL_STATE.salarySavings, ...(parsed.salarySavings || {}) },
           utt: { ...INITIAL_STATE.utt, ...(parsed.utt || {}) },
           car: { ...INITIAL_STATE.car, ...(parsed.car || {}) },
           laptop: { ...INITIAL_STATE.laptop, ...(parsed.laptop || {}) },
@@ -881,22 +900,59 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addDSEHolding = (holding: Omit<DSEStockHolding, 'id'>) => {
     setState((prev) => {
-      const official = OFFICIAL_DSE_QUOTES[holding.ticker.toUpperCase().trim()];
+      const tickerNorm = holding.ticker.toUpperCase().trim();
+      const official = OFFICIAL_DSE_QUOTES[tickerNorm];
+      const livePrice = official ? official.currentPrice : holding.currentPrice;
+      const existingIndex = (prev.dsePortfolio.holdings || []).findIndex(
+        (h) => h.ticker.toUpperCase().trim() === tickerNorm
+      );
+
+      if (existingIndex >= 0) {
+        // Increment shares on existing holding and blend buy price
+        const existing = prev.dsePortfolio.holdings[existingIndex];
+        const oldCost = existing.sharesHeld * existing.buyPrice;
+        const newCost = holding.sharesHeld * holding.buyPrice;
+        const totalShares = existing.sharesHeld + holding.sharesHeld;
+        const blendedBuyPrice = totalShares > 0 ? Math.round((oldCost + newCost) / totalShares) : holding.buyPrice;
+
+        const updated = [...prev.dsePortfolio.holdings];
+        updated[existingIndex] = {
+          ...existing,
+          sharesHeld: totalShares,
+          buyPrice: blendedBuyPrice,
+          currentPrice: livePrice,
+          officialDSEPrice: livePrice,
+          dayChangePct: official ? official.dayChangePct : existing.dayChangePct,
+        };
+
+        return {
+          ...prev,
+          dsePortfolio: {
+            ...prev.dsePortfolio,
+            holdings: updated,
+            lastUpdated: new Date().toISOString(),
+          },
+        };
+      }
+
+      // Brand new holding with live DSE price
       const newHolding: DSEStockHolding = {
         ...holding,
-        id: `dse-${holding.ticker.toLowerCase()}-${Date.now()}`,
-        currentPrice: official ? official.currentPrice : holding.currentPrice,
-        companyName: holding.companyName || (official ? official.companyName : holding.ticker),
-        officialDSEPrice: official ? official.currentPrice : holding.currentPrice,
-        dividendYieldPct: holding.dividendYieldPct ?? (official ? official.dividendYieldPct : 0),
-        dayChangePct: holding.dayChangePct ?? (official ? official.dayChangePct : 0),
+        id: `dse-${tickerNorm.toLowerCase()}-${Date.now()}`,
+        currentPrice: livePrice,
+        companyName: holding.companyName || (official ? official.companyName : tickerNorm),
+        officialDSEPrice: livePrice,
+        dividendYieldPct: holding.dividendYieldPct ?? (official ? official.dividendYieldPct : 6.0),
+        dayChangePct: holding.dayChangePct ?? (official ? official.dayChangePct : 0.0),
         sector: holding.sector || (official ? official.sector : 'Banking'),
       };
+
       return {
         ...prev,
         dsePortfolio: {
           ...prev.dsePortfolio,
           holdings: [...prev.dsePortfolio.holdings, newHolding],
+          lastUpdated: new Date().toISOString(),
         },
       };
     });
@@ -1013,6 +1069,158 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         reflectLiveDSEPricing: true,
       },
     }));
+  };
+
+  const setTotalDSEValuation = (
+    targetValuation: number,
+    mode: 'reconcile_cash' | 'scale_shares' = 'reconcile_cash'
+  ) => {
+    setState((prev) => {
+      const sanitizedTarget = Math.max(0, targetValuation);
+      const holdings = prev.dsePortfolio.holdings || [];
+      const currentEquitiesValue = holdings.reduce(
+        (sum, h) => sum + h.sharesHeld * h.currentPrice,
+        0
+      );
+
+      if (mode === 'scale_shares') {
+        if (currentEquitiesValue > 0 && sanitizedTarget > 0) {
+          const ratio = sanitizedTarget / currentEquitiesValue;
+          const scaledHoldings = holdings.map((h) => ({
+            ...h,
+            sharesHeld: Math.max(1, Math.round(h.sharesHeld * ratio)),
+          }));
+
+          const newTotalVal =
+            scaledHoldings.reduce((sum, h) => sum + h.sharesHeld * h.currentPrice, 0) +
+            prev.dsePortfolio.cashBalance;
+          const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+          const reached = milestoneTargets.filter((thresh) => newTotalVal >= thresh);
+
+          return {
+            ...prev,
+            dsePortfolio: {
+              ...prev.dsePortfolio,
+              holdings: scaledHoldings,
+              targetTotalValuation: sanitizedTarget,
+              milestonesReached: reached,
+              lastUpdated: new Date().toISOString(),
+            },
+          };
+        }
+      }
+
+      // Default mode: reconcile cash balance so total = targetValuation
+      const neededCash = Math.max(0, sanitizedTarget - currentEquitiesValue);
+      const newTotalVal = currentEquitiesValue + neededCash;
+      const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+      const reached = milestoneTargets.filter((thresh) => newTotalVal >= thresh);
+
+      return {
+        ...prev,
+        dsePortfolio: {
+          ...prev.dsePortfolio,
+          cashBalance: neededCash,
+          targetTotalValuation: sanitizedTarget,
+          milestonesReached: reached,
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const updateDSEHoldingValue = (
+    id: string,
+    targetValue: number,
+    mode: 'adjust_shares' | 'adjust_price' = 'adjust_shares'
+  ) => {
+    setState((prev) => {
+      const sanitizedTarget = Math.max(0, targetValue);
+      const updatedHoldings = (prev.dsePortfolio.holdings || []).map((h) => {
+        if (h.id !== id) return h;
+
+        if (mode === 'adjust_price') {
+          // Adjust price per share to match target total holding value
+          const newPrice = h.sharesHeld > 0 ? Math.max(1, Math.round(sanitizedTarget / h.sharesHeld)) : h.currentPrice;
+          return {
+            ...h,
+            currentPrice: newPrice,
+          };
+        }
+
+        // Default mode: adjust shares held to reflect target total value at current price
+        const priceToUse = h.currentPrice > 0 ? h.currentPrice : (h.buyPrice > 0 ? h.buyPrice : 1000);
+        const newShares = Math.max(1, Math.round(sanitizedTarget / priceToUse));
+        return {
+          ...h,
+          sharesHeld: newShares,
+        };
+      });
+
+      const totalVal =
+        updatedHoldings.reduce((sum, h) => sum + h.sharesHeld * h.currentPrice, 0) +
+        (prev.dsePortfolio.cashBalance || 0);
+      const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+      const reached = milestoneTargets.filter((thresh) => totalVal >= thresh);
+
+      return {
+        ...prev,
+        dsePortfolio: {
+          ...prev.dsePortfolio,
+          holdings: updatedHoldings,
+          milestonesReached: reached,
+          lastUpdated: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  const updateSalarySavings = (salary: Partial<SalarySavingsModel>) => {
+    setState((prev) => ({
+      ...prev,
+      salarySavings: {
+        ...prev.salarySavings,
+        ...salary,
+      },
+    }));
+  };
+
+  const logMonthlySalarySavings = () => {
+    setState((prev) => {
+      const { monthlyAllocatedToDSE, monthlyAllocatedToUTT, monthlyAllocatedToEmergency } = prev.salarySavings;
+      const totalSaved = monthlyAllocatedToDSE + monthlyAllocatedToUTT + monthlyAllocatedToEmergency;
+
+      // Transfer DSE allocation into DSE Cash
+      const nextDSE = {
+        ...prev.dsePortfolio,
+        cashBalance: prev.dsePortfolio.cashBalance + monthlyAllocatedToDSE,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // Transfer UTT allocation into UTT Fund
+      const nextUTT = {
+        ...prev.utt,
+        investmentAmount: prev.utt.investmentAmount + monthlyAllocatedToUTT,
+      };
+
+      // Transfer Emergency allocation into Cash Reserve
+      const nextAllocations = {
+        ...prev.allocations,
+        cashReserve: prev.allocations.cashReserve + monthlyAllocatedToEmergency,
+        utt: prev.allocations.utt + monthlyAllocatedToUTT,
+      };
+
+      return {
+        ...prev,
+        dsePortfolio: nextDSE,
+        utt: nextUTT,
+        allocations: nextAllocations,
+        salarySavings: {
+          ...prev.salarySavings,
+          historicalSavingsTotal: (prev.salarySavings.historicalSavingsTotal || 0) + totalSaved,
+        },
+      };
+    });
   };
 
   const redeemUTTLiquid = (amount: number) => {
@@ -1352,6 +1560,11 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     steazyCalc,
     dseCalc
   );
+  const salarySavingsCalc = calculateSalarySavings(
+    state.salarySavings,
+    dseCalc.totalMarketValue,
+    state.allocations.cashReserve
+  );
 
   return (
     <KairosContext.Provider
@@ -1376,7 +1589,11 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         syncDSEMarketData,
         reflectOfficialDSEPrices,
         restoreDefaultDSEHoldings,
+        setTotalDSEValuation,
+        updateDSEHoldingValue,
         recordDSEMilestoneDecision,
+        updateSalarySavings,
+        logMonthlySalarySavings,
         updateUTT,
         redeemUTTLiquid,
         depositToUTT,
@@ -1410,6 +1627,7 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         carCalc,
         loanCalc,
         masterCalc,
+        salarySavingsCalc,
       }}
     >
       {children}
