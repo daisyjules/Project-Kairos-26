@@ -198,6 +198,28 @@ export interface DSEPortfolioModel {
   };
   reflectLiveDSEPricing?: boolean;
   targetTotalValuation?: number;
+  lastNotifiedMilestone?: number;
+}
+
+export interface AppNotification {
+  id: string;
+  type: 'milestone' | 'dividend' | 'savings' | 'alert' | 'system';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  data?: {
+    milestoneAmount?: number;
+    portfolioValue?: number;
+    actionTab?: string;
+  };
+}
+
+export interface NotificationSettings {
+  enableSound: boolean;
+  enableBrowserPush: boolean;
+  enableCelebrationModal: boolean;
+  customMilestoneThresholds: number[];
 }
 
 export interface SalarySavingsModel {
@@ -325,4 +347,6 @@ export interface KairosState {
   pinnedNotes: PinnedNote[];
   comments: CommentItem[];
   currency: string;
+  notifications: AppNotification[];
+  notificationSettings: NotificationSettings;
 }

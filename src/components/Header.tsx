@@ -2,6 +2,7 @@ import React from 'react';
 import { useKairos } from '../context/KairosContext';
 import { formatTZS, formatRatio } from '../utils/formatters';
 import { AlertTriangle } from 'lucide-react';
+import { NotificationCenter } from './NotificationCenter';
 
 export const Header: React.FC = () => {
   const { masterCalc, setActiveTab } = useKairos();
@@ -58,6 +59,9 @@ export const Header: React.FC = () => {
               <span className="size-2 rounded-full bg-emerald-600" />
               <span>DSCR {formatRatio(masterCalc.dscr)}</span>
             </div>
+
+            {/* Notification Center with Milestone Alerts & Sound Controls */}
+            <NotificationCenter />
           </div>
         </div>
 

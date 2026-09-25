@@ -22,7 +22,15 @@ import {
   ScenarioType,
   TabKey,
   SalarySavingsModel,
+  AppNotification,
+  NotificationSettings,
 } from '../types';
+import { formatTZS } from '../utils/formatters';
+import {
+  playMilestoneChime,
+  sendBrowserNotification,
+  triggerCelebrationConfetti,
+} from '../utils/audio';
 import {
   calculateKlinFitz,
   calculateSteazy,
@@ -265,6 +273,7 @@ export const INITIAL_STATE: KairosState = {
     lastUpdated: new Date().toISOString(),
     milestonesReached: [],
     reflectLiveDSEPricing: true,
+    lastNotifiedMilestone: 0,
   },
   salarySavings: {
     monthlyNetSalary: 2_500_000,
@@ -532,6 +541,22 @@ export const INITIAL_STATE: KairosState = {
       pinColor: 'gold',
     },
   ],
+  notifications: [
+    {
+      id: 'notif-welcome',
+      type: 'system',
+      title: 'Milestone Tracking Active',
+      message: 'Automatic notifications are enabled for 5M TZS, 6M TZS, and 10M TZS portfolio targets with celebration and sound alerts.',
+      timestamp: new Date().toISOString(),
+      read: false,
+    },
+  ],
+  notificationSettings: {
+    enableSound: true,
+    enableBrowserPush: false,
+    enableCelebrationModal: true,
+    customMilestoneThresholds: [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000, 15_000_000, 20_000_000],
+  },
 };
 
 interface KairosContextType {
@@ -602,6 +627,19 @@ interface KairosContextType {
   loanCalc: LoanCalculations;
   masterCalc: MasterCalculations;
   salarySavingsCalc: SalarySavingsCalculations;
+
+  // Notification system
+  addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  clearNotifications: () => void;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  testMilestoneNotification: (milestoneAmount?: number) => void;
+  activeCelebrationMilestone: number | null;
+  closeCelebrationModal: () => void;
+  triggerCelebrationForMilestone: (milestone: number) => void;
+  unreadNotificationCount: number;
+  notificationSettings: NotificationSettings;
 }
 
 const KairosContext = createContext<KairosContextType | undefined>(undefined);
@@ -678,6 +716,11 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           diaryEntries: parsed.diaryEntries || INITIAL_STATE.diaryEntries,
           pinnedNotes: parsed.pinnedNotes || INITIAL_STATE.pinnedNotes,
           comments: parsed.comments || INITIAL_STATE.comments,
+          notifications: parsed.notifications || INITIAL_STATE.notifications,
+          notificationSettings: {
+            ...INITIAL_STATE.notificationSettings,
+            ...(parsed.notificationSettings || {}),
+          },
         };
       }
     } catch (e) {
@@ -1566,6 +1609,153 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     state.allocations.cashReserve
   );
 
+  // Celebration modal state
+  const [activeCelebrationMilestone, setActiveCelebrationMilestone] = useState<number | null>(null);
+
+  const closeCelebrationModal = () => {
+    setActiveCelebrationMilestone(null);
+  };
+
+  const triggerCelebrationForMilestone = (milestone: number) => {
+    setActiveCelebrationMilestone(milestone);
+    if (state.notificationSettings?.enableSound) {
+      playMilestoneChime();
+    }
+    triggerCelebrationConfetti();
+  };
+
+  const addNotification = (
+    notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>
+  ) => {
+    const newNotif: AppNotification = {
+      ...notif,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+    setState((prev) => ({
+      ...prev,
+      notifications: [newNotif, ...(prev.notifications || [])].slice(0, 50),
+    }));
+  };
+
+  const markNotificationRead = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      ),
+    }));
+  };
+
+  const markAllNotificationsRead = () => {
+    setState((prev) => ({
+      ...prev,
+      notifications: (prev.notifications || []).map((n) => ({ ...n, read: true })),
+    }));
+  };
+
+  const clearNotifications = () => {
+    setState((prev) => ({
+      ...prev,
+      notifications: [],
+    }));
+  };
+
+  const updateNotificationSettings = (settings: Partial<NotificationSettings>) => {
+    setState((prev) => ({
+      ...prev,
+      notificationSettings: {
+        ...prev.notificationSettings,
+        ...settings,
+      },
+    }));
+  };
+
+  const testMilestoneNotification = (milestoneAmount = 5_000_000) => {
+    addNotification({
+      type: 'milestone',
+      title: `🎉 ${formatTZS(milestoneAmount)} Milestone Reached!`,
+      message: `Congratulations! Your DSE stock portfolio has reached ${formatTZS(milestoneAmount)}. Tap to review strategic next actions.`,
+      data: {
+        milestoneAmount,
+        portfolioValue: Math.max(milestoneAmount, dseCalc.totalLiquidAndShares),
+        actionTab: 'dse',
+      },
+    });
+
+    if (state.notificationSettings?.enableSound) {
+      playMilestoneChime();
+    }
+
+    if (state.notificationSettings?.enableBrowserPush) {
+      sendBrowserNotification(
+        'Project Kairos 26: 🎉 5M Milestone Unlocked!',
+        `Your DSE stock portfolio reached ${formatTZS(milestoneAmount)}!`
+      );
+    }
+
+    if (state.notificationSettings?.enableCelebrationModal) {
+      setActiveCelebrationMilestone(milestoneAmount);
+    }
+    triggerCelebrationConfetti();
+  };
+
+  // Automatic milestone detector when portfolio value crosses milestone thresholds
+  useEffect(() => {
+    const totalVal = dseCalc.totalLiquidAndShares;
+    if (totalVal <= 0) return;
+
+    const thresholds = state.notificationSettings?.customMilestoneThresholds || [
+      5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000, 15_000_000, 20_000_000,
+    ];
+
+    const reachedThresholds = thresholds.filter((t) => totalVal >= t);
+    if (reachedThresholds.length === 0) return;
+
+    const highestReached = Math.max(...reachedThresholds);
+    const lastNotified = state.dsePortfolio.lastNotifiedMilestone || 0;
+
+    // Only notify if we reached a higher milestone threshold than previously notified
+    if (highestReached > lastNotified) {
+      setState((prev) => ({
+        ...prev,
+        dsePortfolio: {
+          ...prev.dsePortfolio,
+          lastNotifiedMilestone: highestReached,
+          milestonesReached: reachedThresholds,
+        },
+      }));
+
+      addNotification({
+        type: 'milestone',
+        title: `🎯 ${formatTZS(highestReached)} Milestone Achieved!`,
+        message: `Your public equities portfolio reached ${formatTZS(totalVal)}! Tap to view asset distribution and strategic options.`,
+        data: {
+          milestoneAmount: highestReached,
+          portfolioValue: totalVal,
+          actionTab: 'dse',
+        },
+      });
+
+      if (state.notificationSettings?.enableSound) {
+        playMilestoneChime();
+      }
+      if (state.notificationSettings?.enableBrowserPush) {
+        sendBrowserNotification(
+          `Project Kairos 26: 🎉 Milestone Reached!`,
+          `Your DSE portfolio crossed ${formatTZS(highestReached)} (verified at ${formatTZS(totalVal)})!`
+        );
+      }
+      if (state.notificationSettings?.enableCelebrationModal) {
+        setActiveCelebrationMilestone(highestReached);
+      }
+      triggerCelebrationConfetti();
+    }
+  }, [dseCalc.totalLiquidAndShares, state.notificationSettings, state.dsePortfolio.lastNotifiedMilestone]);
+
+  const unreadNotificationCount = (state.notifications || []).filter((n) => !n.read).length;
+
   return (
     <KairosContext.Provider
       value={{
@@ -1628,6 +1818,17 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         loanCalc,
         masterCalc,
         salarySavingsCalc,
+        addNotification,
+        markNotificationRead,
+        markAllNotificationsRead,
+        clearNotifications,
+        updateNotificationSettings,
+        testMilestoneNotification,
+        activeCelebrationMilestone,
+        closeCelebrationModal,
+        triggerCelebrationForMilestone,
+        unreadNotificationCount,
+        notificationSettings: state.notificationSettings || INITIAL_STATE.notificationSettings,
       }}
     >
       {children}

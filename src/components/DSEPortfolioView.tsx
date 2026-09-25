@@ -32,11 +32,17 @@ import {
   ArrowRight,
   ChevronRight,
   Calculator,
+  Bell,
+  Volume2,
+  VolumeX,
+  Laptop,
+  Trophy,
 } from 'lucide-react';
 import { useKairos } from '../context/KairosContext';
 import dseImg from '../assets/images/dse_stock_exchange_1790167309543.jpg';
 import { StatCard } from './StatCard';
 import { formatTZS } from '../utils/formatters';
+import { requestBrowserNotificationPermission } from '../utils/audio';
 import { DSEStockHolding } from '../types';
 import { ALL_DSE_STOCKS, OFFICIAL_DSE_QUOTES, getOfficialDSEQuote } from '../data/dseEquities';
 
@@ -57,7 +63,14 @@ export const DSEPortfolioView: React.FC = () => {
     salarySavingsCalc,
     logMonthlySalarySavings,
     dseCalc,
+    testMilestoneNotification,
+    updateNotificationSettings,
+    triggerCelebrationForMilestone,
+    notificationSettings,
   } = useKairos();
+
+  const isSoundEnabled = notificationSettings?.enableSound ?? true;
+  const isBrowserPushEnabled = notificationSettings?.enableBrowserPush ?? false;
 
   const portfolio = state.dsePortfolio;
   const salary = state.salarySavings;
@@ -915,6 +928,197 @@ export const DSEPortfolioView: React.FC = () => {
               Evaluate Saving Capability
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION: Automated Milestone Notification Engine (5M Threshold) */}
+      <section className="rounded-2xl border-2 border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-stone-50 p-6 shadow-sm space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-100 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-2xs">
+                <Bell className="h-4 w-4" />
+              </span>
+              <h2 className="text-base font-bold text-stone-900">
+                Automated Milestone Notification Engine (5,000,000 TZS Milestone)
+              </h2>
+            </div>
+            <p className="text-xs text-stone-600 max-w-2xl leading-relaxed">
+              When your portfolio crosses <strong>5,000,000 TZS</strong> (and subsequent 6M, 7M, 8M, 9M, 10M targets), Project Kairos immediately triggers real-time alerts across 4 integrated channels.
+            </p>
+          </div>
+
+          {/* Current 5M Status Badge */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-stone-500 font-medium">5M Target Status:</span>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono-num ${
+                dseCalc.totalLiquidAndShares >= 5_000_000
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-amber-100 text-amber-900 border border-amber-300'
+              }`}
+            >
+              {dseCalc.totalLiquidAndShares >= 5_000_000 ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  5M Milestone Reached ({formatTZS(dseCalc.totalLiquidAndShares)})
+                </>
+              ) : (
+                <>
+                  <Clock className="h-3.5 w-3.5 text-amber-700" />
+                  {formatTZS(dseCalc.totalLiquidAndShares)} / 5,000,000 TZS ({((dseCalc.totalLiquidAndShares / 5_000_000) * 100).toFixed(1)}%)
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* 4 Multi-Channel Notification Statuses */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Channel 1: Celebration Modal */}
+          <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-2xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                1. Celebration Dialog
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                Active
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-normal">
+              Full-screen celebration modal with confetti burst, asset contribution ledger, and strategic decision routing.
+            </p>
+          </div>
+
+          {/* Channel 2: Header Bell */}
+          <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-2xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Bell className="h-3.5 w-3.5 text-emerald-600" />
+                2. Header Alert Bell
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                Active
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-normal">
+              Pulses an unread badge on the top header bell and permanently preserves the milestone timestamp in your alert log.
+            </p>
+          </div>
+
+          {/* Channel 3: Melodic Web Audio Chime */}
+          <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-2xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Volume2 className="h-3.5 w-3.5 text-emerald-600" />
+                3. Audio Chime
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  updateNotificationSettings({
+                    enableSound: !isSoundEnabled,
+                  })
+                }
+                className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  isSoundEnabled
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-stone-200 text-stone-600'
+                }`}
+                title="Toggle Web Audio celebration chime"
+              >
+                {isSoundEnabled ? 'ON (Mute)' : 'MUTED (Enable)'}
+              </button>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-normal">
+              Synthesizes an ascending celebratory C5-E5-G5-C6 harmonic chord chime via Web Audio without network delay.
+            </p>
+          </div>
+
+          {/* Channel 4: Native Desktop / Push */}
+          <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-2xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Laptop className="h-3.5 w-3.5 text-indigo-600" />
+                4. Desktop Push
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!isBrowserPushEnabled) {
+                    const granted = await requestBrowserNotificationPermission();
+                    if (granted) {
+                      updateNotificationSettings({ enableBrowserPush: true });
+                      showToast('Desktop browser notifications enabled!');
+                    } else {
+                      alert('Browser notification permission not granted.');
+                    }
+                  } else {
+                    updateNotificationSettings({ enableBrowserPush: false });
+                    showToast('Desktop browser notifications turned off.');
+                  }
+                }}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  isBrowserPushEnabled
+                    ? 'bg-indigo-100 text-indigo-800'
+                    : 'bg-stone-200 text-stone-600'
+                }`}
+                title="Toggle native desktop notification permission"
+              >
+                {isBrowserPushEnabled ? 'ACTIVE' : 'ENABLE'}
+              </button>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-normal">
+              Dispatches native OS notification to your device even if you are browsing another tab or working in another app.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls: Test Notification & Simulate 5M */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-emerald-100">
+          <div className="text-xs text-stone-600">
+            <span>Want to preview how the notification behaves right now?</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                testMilestoneNotification(5_000_000);
+                showToast('Triggered 5M Milestone Notification test with chime, confetti, and alert badge!');
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-900 shadow-2xs transition-colors cursor-pointer"
+              title="Test the 5,000,000 TZS notification and celebration modal"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              Test 5M Alert Now
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTotalDSEValuation(5_000_000, 'reconcile_cash');
+                showToast('Adjusted portfolio valuation to 5,000,000 TZS! Recomputed milestones.');
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 hover:bg-stone-50 shadow-2xs transition-colors cursor-pointer"
+              title="Quickly set portfolio total value to exactly 5M to see the live milestone crossing"
+            >
+              <Zap className="h-3.5 w-3.5 text-amber-600" />
+              Set Total Value to 5M TZS
+            </button>
+
+            {dseCalc.totalLiquidAndShares >= 5_000_000 && (
+              <button
+                type="button"
+                onClick={() => triggerCelebrationForMilestone(5_000_000)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-100/70 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-200/80 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Trophy className="h-3.5 w-3.5 text-emerald-700" />
+                View 5M Milestone Decision
+              </button>
+            )}
           </div>
         </div>
       </section>

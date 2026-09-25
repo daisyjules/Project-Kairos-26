@@ -20,10 +20,11 @@ import { RetroAtelierView } from './components/RetroAtelierView';
 import { ApexEcosystemView } from './components/ApexEcosystemView';
 import { RoadmapView } from './components/RoadmapView';
 import { MonthlyTrackerView } from './components/MonthlyTrackerView';
+import { MilestoneCelebrationModal } from './components/MilestoneCelebrationModal';
 import { motion, AnimatePresence } from 'motion/react';
 
 const DashboardContent: React.FC = () => {
-  const { state } = useKairos();
+  const { state, activeCelebrationMilestone, closeCelebrationModal } = useKairos();
 
   const renderActiveView = () => {
     switch (state.activeTab) {
@@ -95,6 +96,12 @@ const DashboardContent: React.FC = () => {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Global Milestone Celebration Modal */}
+      <MilestoneCelebrationModal
+        milestone={activeCelebrationMilestone}
+        onClose={closeCelebrationModal}
+      />
 
       <footer className="border-t border-gray-200/80 py-5 text-center text-xs text-gray-400">
         Project Kairos 26 · Founder capital planning
