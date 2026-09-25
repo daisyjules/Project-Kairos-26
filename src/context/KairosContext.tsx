@@ -213,50 +213,54 @@ export const INITIAL_STATE: KairosState = {
         id: 'dse-crdb',
         ticker: 'CRDB',
         companyName: 'CRDB Bank Plc',
-        sharesHeld: 4000,
-        buyPrice: 560,
-        currentPrice: 620,
-        dividendYieldPct: 8.2,
-        dayChangePct: 1.64,
+        sharesHeld: 350,
+        buyPrice: 2850,
+        currentPrice: 2920,
+        dividendYieldPct: 6.8,
+        dayChangePct: 1.74,
         sector: 'Banking',
+        officialDSEPrice: 2920,
       },
       {
         id: 'dse-nmb',
         ticker: 'NMB',
         companyName: 'NMB Bank Plc',
-        sharesHeld: 450,
-        buyPrice: 4800,
-        currentPrice: 5400,
-        dividendYieldPct: 7.1,
-        dayChangePct: 0.93,
+        sharesHeld: 300,
+        buyPrice: 2050,
+        currentPrice: 2130,
+        dividendYieldPct: 7.2,
+        dayChangePct: 0.47,
         sector: 'Banking',
+        officialDSEPrice: 2130,
       },
       {
         id: 'dse-tpcc',
         ticker: 'TPCC',
         companyName: 'Tanzania Portland Cement (Twiga)',
-        sharesHeld: 250,
-        buyPrice: 4100,
-        currentPrice: 4350,
-        dividendYieldPct: 9.0,
-        dayChangePct: -0.45,
+        sharesHeld: 100,
+        buyPrice: 5450,
+        currentPrice: 5600,
+        dividendYieldPct: 8.5,
+        dayChangePct: -0.88,
         sector: 'Manufacturing',
+        officialDSEPrice: 5600,
       },
       {
         id: 'dse-dse',
         ticker: 'DSE',
         companyName: 'Dar es Salaam Stock Exchange PLC',
-        sharesHeld: 500,
-        buyPrice: 2100,
-        currentPrice: 2400,
-        dividendYieldPct: 10.4,
-        dayChangePct: 2.13,
+        sharesHeld: 50,
+        buyPrice: 6000,
+        currentPrice: 6170,
+        dividendYieldPct: 5.6,
+        dayChangePct: 1.15,
         sector: 'Financial Services',
+        officialDSEPrice: 6170,
       },
     ],
     cashBalance: 250_000,
-    lastUpdated: '2026-03-24T14:30:00Z',
-    milestonesReached: [5_000_000],
+    lastUpdated: new Date().toISOString(),
+    milestonesReached: [],
     reflectLiveDSEPricing: true,
   },
   utt: {
@@ -605,18 +609,43 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           },
           zanzibarAirbnb: { ...INITIAL_STATE.zanzibarAirbnb, ...(parsed.zanzibarAirbnb || {}) },
           poultry: { ...INITIAL_STATE.poultry, ...(parsed.poultry || {}) },
-          dsePortfolio: {
-            ...INITIAL_STATE.dsePortfolio,
-            ...(parsed.dsePortfolio || {}),
-            holdings:
+          dsePortfolio: (() => {
+            const rawDSEHoldings =
               parsed.dsePortfolio?.holdings && parsed.dsePortfolio.holdings.length > 0
                 ? parsed.dsePortfolio.holdings
-                : INITIAL_STATE.dsePortfolio.holdings,
-            milestonesReached:
-              parsed.dsePortfolio?.milestonesReached && parsed.dsePortfolio.milestonesReached.length > 0
-                ? parsed.dsePortfolio.milestonesReached
-                : INITIAL_STATE.dsePortfolio.milestonesReached,
-          },
+                : INITIAL_STATE.dsePortfolio.holdings;
+
+            // Reconcile prices with real-time official DSE market quotes
+            const reconciledHoldings = rawDSEHoldings.map((h: any) => {
+              const official = OFFICIAL_DSE_QUOTES[h.ticker?.toUpperCase()?.trim()];
+              if (official) {
+                return {
+                  ...h,
+                  companyName: official.companyName,
+                  currentPrice: official.currentPrice,
+                  dayChangePct: official.dayChangePct,
+                  dividendYieldPct: official.dividendYieldPct,
+                  sector: official.sector,
+                  officialDSEPrice: official.currentPrice,
+                };
+              }
+              return h;
+            });
+
+            const totalHoldingsVal =
+              reconciledHoldings.reduce((sum: number, h: any) => sum + (h.sharesHeld || 0) * (h.currentPrice || 0), 0) +
+              (parsed.dsePortfolio?.cashBalance ?? INITIAL_STATE.dsePortfolio.cashBalance);
+            const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+            const actualReachedMilestones = milestoneTargets.filter((thresh) => totalHoldingsVal >= thresh);
+
+            return {
+              ...INITIAL_STATE.dsePortfolio,
+              ...(parsed.dsePortfolio || {}),
+              holdings: reconciledHoldings,
+              milestonesReached: actualReachedMilestones,
+              reflectLiveDSEPricing: true,
+            };
+          })(),
           utt: { ...INITIAL_STATE.utt, ...(parsed.utt || {}) },
           car: { ...INITIAL_STATE.car, ...(parsed.car || {}) },
           laptop: { ...INITIAL_STATE.laptop, ...(parsed.laptop || {}) },

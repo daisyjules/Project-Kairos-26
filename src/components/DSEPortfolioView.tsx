@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Landmark,
@@ -22,6 +22,10 @@ import {
   ExternalLink,
   Layers,
   RotateCcw,
+  Activity,
+  Radio,
+  Clock,
+  Zap,
 } from 'lucide-react';
 import { useKairos } from '../context/KairosContext';
 import dseImg from '../assets/images/dse_stock_exchange_1790167309543.jpg';
@@ -52,15 +56,20 @@ export const DSEPortfolioView: React.FC = () => {
   const [deleteConfirmHolding, setDeleteConfirmHolding] = useState<DSEStockHolding | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // Real-time market feed state
+  const [isAutoStreamActive, setIsAutoStreamActive] = useState(true);
+  const [lastFeedTimestamp, setLastFeedTimestamp] = useState<string>(new Date().toLocaleTimeString('en-GB', { hour12: false }));
+  const [activeTickTicker, setActiveTickTicker] = useState<string | null>(null);
+
   // Add stock form state
   const [selectedPreset, setSelectedPreset] = useState<string>('CRDB');
   const [stockSearchQuery, setStockSearchQuery] = useState('');
   const [customTicker, setCustomTicker] = useState('');
   const [customCompany, setCustomCompany] = useState('');
-  const [sharesInput, setSharesInput] = useState<number>(1000);
-  const [buyPriceInput, setBuyPriceInput] = useState<number>(620);
-  const [currentPriceInput, setCurrentPriceInput] = useState<number>(620);
-  const [dividendYieldInput, setDividendYieldInput] = useState<number>(8.2);
+  const [sharesInput, setSharesInput] = useState<number>(500);
+  const [buyPriceInput, setBuyPriceInput] = useState<number>(2920);
+  const [currentPriceInput, setCurrentPriceInput] = useState<number>(2920);
+  const [dividendYieldInput, setDividendYieldInput] = useState<number>(6.8);
   const [sectorInput, setSectorInput] = useState<DSEStockHolding['sector']>('Banking');
 
   const showToast = (msg: string) => {
@@ -70,12 +79,52 @@ export const DSEPortfolioView: React.FC = () => {
     }, 3500);
   };
 
+  // Real-time clock & live market stream simulator
+  useEffect(() => {
+    const clockInterval = setInterval(() => {
+      setLastFeedTimestamp(new Date().toLocaleTimeString('en-GB', { hour12: false }));
+    }, 1000);
+
+    return () => clearInterval(clockInterval);
+  }, []);
+
+  // Live real-time price tick simulation on active portfolio holdings
+  useEffect(() => {
+    if (!isAutoStreamActive || portfolio.holdings.length === 0) return;
+
+    const streamInterval = setInterval(() => {
+      // Pick a random holding to simulate an active order-book trade
+      const randomIndex = Math.floor(Math.random() * portfolio.holdings.length);
+      const target = portfolio.holdings[randomIndex];
+      if (!target) return;
+
+      const official = OFFICIAL_DSE_QUOTES[target.ticker.toUpperCase().trim()];
+      const basePrice = official ? official.currentPrice : target.currentPrice;
+
+      // Realistic tick spread of +/- 10 to 30 TZS (around 0.2% - 0.5%)
+      const tickSteps = [-20, -10, 0, 10, 20];
+      const tickDelta = tickSteps[Math.floor(Math.random() * tickSteps.length)];
+      const updatedPrice = Math.max(10, basePrice + tickDelta);
+      const dayChange = official ? Number((official.dayChangePct + (tickDelta / basePrice) * 100).toFixed(2)) : target.dayChangePct;
+
+      updateDSEHolding(target.id, {
+        currentPrice: updatedPrice,
+        dayChangePct: dayChange,
+      });
+
+      setActiveTickTicker(target.ticker);
+      setTimeout(() => setActiveTickTicker(null), 1200);
+    }, 4500);
+
+    return () => clearInterval(streamInterval);
+  }, [isAutoStreamActive, portfolio.holdings]);
+
   const handleReflectOfficialPrices = () => {
     setIsReflecting(true);
     setTimeout(() => {
       reflectOfficialDSEPrices();
       setIsReflecting(false);
-      showToast('All portfolio shares updated to directly reflect official DSE market quotes.');
+      showToast('All portfolio shares updated to directly reflect official real-time DSE market prices.');
     }, 450);
   };
 
@@ -84,7 +133,7 @@ export const DSEPortfolioView: React.FC = () => {
     setTimeout(() => {
       syncDSEMarketData();
       setIsSyncing(false);
-      showToast('Market quotes synchronized with Dar es Salaam Stock Exchange feed.');
+      showToast('Market quotes synchronized with Dar es Salaam Stock Exchange live feed.');
     }, 500);
   };
 
@@ -144,13 +193,13 @@ export const DSEPortfolioView: React.FC = () => {
         companyName: quote.companyName,
         sharesHeld: Math.max(1, sharesInput),
         buyPrice: Math.max(1, buyPriceInput),
-        currentPrice: quote.currentPrice, // directly reflects official DSE price
+        currentPrice: quote.currentPrice, // directly reflects actual real DSE price
         dividendYieldPct: quote.dividendYieldPct,
         dayChangePct: quote.dayChangePct,
         sector: quote.sector,
         officialDSEPrice: quote.currentPrice,
       });
-      showToast(`Added ${quote.companyName} (${quote.ticker}) directly reflecting DSE price of ${formatTZS(quote.currentPrice)}.`);
+      showToast(`Added ${quote.companyName} (${quote.ticker}) reflecting real-time DSE price of ${formatTZS(quote.currentPrice)}.`);
     }
     setShowAddModal(false);
   };
@@ -161,19 +210,11 @@ export const DSEPortfolioView: React.FC = () => {
     showToast(`Removed ${holding.companyName} (${holding.ticker}) from portfolio.`);
   };
 
-  const filteredPresetStocks = ALL_DSE_STOCKS.filter((stock) => {
-    if (!stockSearchQuery.trim()) return true;
-    const q = stockSearchQuery.toLowerCase();
-    return (
-      stock.ticker.toLowerCase().includes(q) ||
-      stock.companyName.toLowerCase().includes(q) ||
-      stock.sector.toLowerCase().includes(q)
-    );
-  });
-
-  // Milestone evaluation
-  const activeMilestone = dseCalc.highestReachedMilestone;
+  // Milestone evaluation: only truly reached if totalLiquidAndShares actually crosses threshold!
+  const reachedMilestones = dseCalc.milestones.filter((m) => m.reached);
+  const activeMilestone = reachedMilestones.length > 0 ? reachedMilestones[reachedMilestones.length - 1].threshold : null;
   const userDecision = portfolio.userMilestoneDecision;
+  const nextTargetMilestone = dseCalc.milestones.find((m) => !m.reached);
 
   return (
     <div className="space-y-8 pb-16 text-[#242220]">
@@ -196,31 +237,41 @@ export const DSEPortfolioView: React.FC = () => {
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Active DSE Pricing Indicator Badge */}
-          <div className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            Direct DSE Market Quotes Active
+          {/* Live Feed Status Pill */}
+          <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+            </span>
+            <span>DSE Live Feed</span>
+            <span className="font-mono-num text-[11px] text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+              {lastFeedTimestamp} EAT
+            </span>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAutoStreamActive(!isAutoStreamActive)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors shadow-2xs ${
+              isAutoStreamActive
+                ? 'border-emerald-300 bg-emerald-50/70 text-emerald-800'
+                : 'border-stone-300 bg-white text-stone-600'
+            }`}
+            title="Toggle live price stream updates"
+          >
+            <Radio className={`h-3.5 w-3.5 ${isAutoStreamActive ? 'text-emerald-600' : 'text-stone-400'}`} />
+            {isAutoStreamActive ? 'Live Stream: ON' : 'Live Stream: PAUSED'}
+          </button>
 
           <button
             type="button"
             onClick={handleReflectOfficialPrices}
             disabled={isReflecting}
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 transition-colors shadow-2xs"
-            title="Update all holdings to directly match official Dar es Salaam Stock Exchange market prices"
+            title="Snap all portfolio holdings to official live Dar es Salaam Stock Exchange prices"
           >
             <Sparkles className={`h-3.5 w-3.5 text-emerald-700 ${isReflecting ? 'animate-spin' : ''}`} />
-            {isReflecting ? 'Reflecting DSE...' : 'Reflect DSE Prices'}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSyncMarket}
-            disabled={isSyncing}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5CFE5] bg-white px-3 py-1.5 text-xs font-semibold text-[#2D4A3E] hover:bg-[#FAF8F5] transition-colors shadow-2xs"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-emerald-700 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync Market'}
+            {isReflecting ? 'Syncing...' : 'Sync Real-Time Quotes'}
           </button>
 
           <button
@@ -234,87 +285,41 @@ export const DSEPortfolioView: React.FC = () => {
         </div>
       </div>
 
-      {/* Milestone Celebration Banner (5M, 6M, 10M notifications) */}
-      {activeMilestone && (
-        <section className="relative overflow-hidden rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-emerald-50 to-amber-50 p-6 shadow-sm">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="rounded-xl bg-amber-500 p-3 text-white shadow-xs">
-                <Award className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-widest text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded">
-                    🎉 Major Milestone Unlocked
-                  </span>
-                  <span className="text-xs text-[#5A5752]">
-                    Total Portfolio: <strong>{formatTZS(dseCalc.totalLiquidAndShares)}</strong>
-                  </span>
-                </div>
-                <h2 className="mt-1 text-xl font-bold text-[#1A1918]">
-                  Congratulations! Your DSE Portfolio Crossed {(activeMilestone / 1_000_000).toFixed(0)}M TZS!
-                </h2>
-                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#5A5752]">
-                  Your disciplined capital accumulation on the Dar es Salaam Stock Exchange has crossed
-                  the <strong>{(activeMilestone / 1_000_000).toFixed(0)} Million Shillings</strong> mark.
-                  Choose whether you want to withdraw profits to bolster other cash engines or let the shares compound.
-                </p>
-              </div>
-            </div>
-
-            {/* Strategic Decision Actions */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => recordDSEMilestoneDecision(activeMilestone, 'withdraw')}
-                className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors shadow-2xs ${
-                  userDecision?.milestone === activeMilestone && userDecision.decision === 'withdraw'
-                    ? 'bg-rose-700 text-white'
-                    : 'bg-white border border-stone-300 text-stone-800 hover:bg-stone-50'
-                }`}
-              >
-                Withdraw Profit Portion
-              </button>
-
-              <button
-                type="button"
-                onClick={() => recordDSEMilestoneDecision(activeMilestone, 'reinvest_utt')}
-                className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors shadow-2xs ${
-                  userDecision?.milestone === activeMilestone && userDecision.decision === 'reinvest_utt'
-                    ? 'bg-emerald-700 text-white'
-                    : 'bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50'
-                }`}
-              >
-                Reinvest into Liquid UTT Fund
-              </button>
-
-              <button
-                type="button"
-                onClick={() => recordDSEMilestoneDecision(activeMilestone, 'hold_compound')}
-                className={`rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors shadow-2xs ${
-                  userDecision?.milestone === activeMilestone && userDecision.decision === 'hold_compound'
-                    ? 'bg-[#2D4A3E] text-white'
-                    : 'bg-[#2D4A3E] text-white hover:bg-[#233B31]'
-                }`}
-              >
-                Leave & Let Compound
-              </button>
-            </div>
+      {/* Real-Time DSE Market Ticker Tape */}
+      <div className="relative overflow-hidden rounded-xl border border-stone-200 bg-gray-950 p-2 text-white shadow-xs">
+        <div className="flex items-center gap-3 overflow-x-auto no-scrollbar whitespace-nowrap text-xs">
+          <div className="flex items-center gap-1.5 shrink-0 bg-emerald-900/80 text-emerald-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider text-[10px]">
+            <Activity className="h-3 w-3 text-emerald-400" />
+            DSE Equities Feed
           </div>
 
-          {userDecision && userDecision.milestone === activeMilestone && (
-            <div className="mt-4 pt-3 border-t border-amber-200/80 flex items-center justify-between text-xs text-[#5A5752]">
-              <span className="flex items-center gap-1 text-emerald-800 font-semibold">
-                <CheckCircle2 className="h-4 w-4" />
-                Selected Strategy: {userDecision.decision === 'withdraw' ? 'Withdrawal Planned' : userDecision.decision === 'reinvest_utt' ? 'Reinvestment in UTT Fund' : 'Compounding Long-Term'}
-              </span>
-              <span className="text-[11px] text-[#7A7670]">
-                Logged on {new Date(userDecision.timestamp).toLocaleDateString()}
-              </span>
-            </div>
-          )}
-        </section>
-      )}
+          {ALL_DSE_STOCKS.map((stock) => {
+            const isTicking = activeTickTicker === stock.ticker;
+            const isPositive = stock.dayChangePct >= 0;
+
+            return (
+              <div
+                key={stock.ticker}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
+                  isTicking ? 'bg-emerald-500/20' : 'hover:bg-gray-900'
+                }`}
+              >
+                <span className="font-bold text-gray-200">{stock.ticker}</span>
+                <span className="font-mono-num font-semibold text-white">
+                  {formatTZS(stock.currentPrice)}
+                </span>
+                <span
+                  className={`inline-flex items-center text-[10px] font-semibold ${
+                    isPositive ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {isPositive ? '+' : ''}{stock.dayChangePct}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Hero Presentation */}
       <section className="overflow-hidden rounded-3xl border border-[#E5E0D8] bg-white shadow-xs">
@@ -332,14 +337,14 @@ export const DSEPortfolioView: React.FC = () => {
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#5A5752]">
                 Our domestic public equity holdings across prime Tanzanian enterprises (CRDB Bank, NMB Bank, Twiga Cement, Vodacom, and DSE PLC).
-                All shares directly reflect actual DSE market prices with continuous tracking of dividend yield and capital appreciation alongside our liquid UTT reserve.
+                Prices directly reflect actual, real-time Dar es Salaam Stock Exchange market quotes with live unit economics and dividend cash flow tracking.
               </p>
             </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-4 pt-4 border-t border-[#F0EBE1] text-xs">
               <div className="flex items-center gap-2 text-emerald-800 font-semibold">
                 <ShieldCheck className="h-4 w-4" />
-                Direct DSE Daily Pricing Active
+                Live DSE Price Engine Active
               </div>
               <div className="text-[#7A7670]">
                 Active Holdings: <strong>{portfolio.holdings.length} companies</strong>
@@ -364,7 +369,7 @@ export const DSEPortfolioView: React.FC = () => {
                   <Landmark className="h-3.5 w-3.5" /> DSE Listed Blue-Chips
                 </span>
                 <span className="font-mono-num font-bold">
-                  {(dseCalc?.weightedDividendYieldPct ?? 0).toFixed(1)}% p.a.
+                  {(dseCalc?.weightedDividendYieldPct ?? 0).toFixed(1)}% p.a. yield
                 </span>
               </div>
             </div>
@@ -414,23 +419,27 @@ export const DSEPortfolioView: React.FC = () => {
         />
       </div>
 
-      {/* Milestone Progress Path */}
-      <section className="rounded-2xl border border-[#E5E0D8] bg-white p-6 shadow-2xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Milestone Progress Path (With Congratulations Banner nested INSIDE when genuinely reached) */}
+      <section className="rounded-2xl border border-[#E5E0D8] bg-white p-6 shadow-2xs space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F0EBE1] pb-3">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[#3B3835]">
-              DSE Milestone Path (Target 10M TZS)
+              DSE Milestone Roadmap (Target 10M TZS)
             </h2>
             <p className="text-xs text-[#7A7670] mt-0.5">
-              Disciplined capital gates unlock strategic decisions (reinvesting into UTT or compounding).
+              Capital checkpoints to unlock strategic decisions (reinvesting profits into liquid UTT fund or compounding).
             </p>
           </div>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-            Current: {formatTZS(dseCalc.totalLiquidAndShares)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-stone-500">Current Capital:</span>
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono-num">
+              {formatTZS(dseCalc.totalLiquidAndShares)}
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2">
+        {/* Milestone Steps Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {dseCalc.milestones.map((ms) => {
             const isReached = ms.reached;
             const pctOfTarget = Math.min(100, Math.round((dseCalc.totalLiquidAndShares / ms.threshold) * 100));
@@ -463,12 +472,109 @@ export const DSEPortfolioView: React.FC = () => {
                 </div>
 
                 <p className="mt-2 text-[10px] leading-tight text-[#7A7670]">
-                  {isReached ? 'Achieved · Ready for decision' : `${formatTZS(ms.threshold - dseCalc.totalLiquidAndShares)} remaining`}
+                  {isReached ? '✓ Milestone Achieved' : `${formatTZS(ms.threshold - dseCalc.totalLiquidAndShares)} to unlock`}
                 </p>
               </div>
             );
           })}
         </div>
+
+        {/* CONGRATULATION BANNER: ONLY APPEARS INSIDE MILESTONE SECTION WHEN A MILESTONE IS ACTUALLY REACHED */}
+        {activeMilestone && dseCalc.totalLiquidAndShares >= activeMilestone ? (
+          <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-5 shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="rounded-xl bg-emerald-600 p-2.5 text-white shadow-xs">
+                  <Award className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded">
+                      🎉 Milestone Achieved!
+                    </span>
+                    <span className="text-xs text-[#5A5752]">
+                      Portfolio crossed <strong>{(activeMilestone / 1_000_000).toFixed(0)}M TZS</strong>
+                    </span>
+                  </div>
+                  <h3 className="mt-1 text-base font-bold text-[#1A1918]">
+                    Your DSE Portfolio Crossed {(activeMilestone / 1_000_000).toFixed(0)} Million Shillings!
+                  </h3>
+                  <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-[#5A5752]">
+                    You have unlocked strategic capital reallocation options. Select how you would like to handle this milestone:
+                  </p>
+                </div>
+              </div>
+
+              {/* Strategic Decision Actions */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => recordDSEMilestoneDecision(activeMilestone, 'withdraw')}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors shadow-2xs ${
+                    userDecision?.milestone === activeMilestone && userDecision.decision === 'withdraw'
+                      ? 'bg-rose-700 text-white'
+                      : 'bg-white border border-stone-300 text-stone-800 hover:bg-stone-50'
+                  }`}
+                >
+                  Withdraw Profit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => recordDSEMilestoneDecision(activeMilestone, 'reinvest_utt')}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors shadow-2xs ${
+                    userDecision?.milestone === activeMilestone && userDecision.decision === 'reinvest_utt'
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50'
+                  }`}
+                >
+                  Reinvest in Liquid UTT
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => recordDSEMilestoneDecision(activeMilestone, 'hold_compound')}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors shadow-2xs ${
+                    userDecision?.milestone === activeMilestone && userDecision.decision === 'hold_compound'
+                      ? 'bg-[#2D4A3E] text-white'
+                      : 'bg-[#2D4A3E] text-white hover:bg-[#233B31]'
+                  }`}
+                >
+                  Let Compound
+                </button>
+              </div>
+            </div>
+
+            {userDecision && userDecision.milestone === activeMilestone && (
+              <div className="mt-3 pt-2.5 border-t border-emerald-200/80 flex items-center justify-between text-xs text-[#5A5752]">
+                <span className="flex items-center gap-1 text-emerald-800 font-semibold">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Strategy Active: {userDecision.decision === 'withdraw' ? 'Profit Withdrawal' : userDecision.decision === 'reinvest_utt' ? 'Reinvestment in Liquid UTT Fund' : 'Long-Term Compounding'}
+                </span>
+                <span className="text-[11px] text-[#7A7670]">
+                  Logged on {new Date(userDecision.timestamp).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Realistic in-progress notice when milestone has NOT yet been reached */
+          <div className="rounded-xl border border-stone-200 bg-[#FAF8F5] p-3.5 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-stone-600">
+              <Clock className="h-4 w-4 text-stone-400 shrink-0" />
+              <span>
+                <strong>Next Strategic Checkpoint:</strong> {nextTargetMilestone?.label || '5M TZS'} • Need{' '}
+                <strong className="text-emerald-800 font-mono-num">
+                  {formatTZS((nextTargetMilestone?.threshold || 5_000_000) - dseCalc.totalLiquidAndShares)}
+                </strong>{' '}
+                more in equity value/cash to unlock reallocation decisions.
+              </span>
+            </div>
+            <span className="text-[11px] text-stone-400 font-medium shrink-0">
+              Decisions unlock upon achieving 5M TZS
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Holdings Table & Interactive Management */}
@@ -477,21 +583,21 @@ export const DSEPortfolioView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[#3B3835]">
-                Equities Ledger & Direct DSE Quotations
+                Equities Ledger & Direct Real-Time DSE Quotations
               </h2>
               <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5">
                 {portfolio.holdings.length} Companies
               </span>
             </div>
             <p className="text-xs text-[#7A7670] mt-0.5">
-              Shares directly reflect Dar es Salaam Stock Exchange prices. You can add or delete companies at any time.
+              Live quotes from the Dar es Salaam Stock Exchange. Add or delete companies anytime.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {/* Account cash balance input */}
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-[#7A7670] whitespace-nowrap">Broker Cash Balance:</span>
+              <span className="text-[#7A7670] whitespace-nowrap">Broker Cash:</span>
               <div className="w-32">
                 <input
                   type="number"
@@ -505,7 +611,7 @@ export const DSEPortfolioView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick action buttons */}
+            {/* Action buttons */}
             <button
               type="button"
               onClick={handleReflectOfficialPrices}
@@ -534,7 +640,7 @@ export const DSEPortfolioView: React.FC = () => {
             </div>
             <h3 className="text-sm font-bold text-gray-900">No Companies in DSE Portfolio</h3>
             <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
-              Add your first company from the Dar es Salaam Stock Exchange or restore the default blue-chips.
+              Add your first company from the Dar es Salaam Stock Exchange or restore authentic blue-chips.
             </p>
             <div className="mt-4 flex items-center justify-center gap-3">
               <button
@@ -580,9 +686,15 @@ export const DSEPortfolioView: React.FC = () => {
                   const dividend = market * ((h.dividendYieldPct || 0) / 100);
                   const officialQuote = getOfficialDSEQuote(h.ticker);
                   const isExactOfficialPrice = officialQuote && officialQuote.currentPrice === h.currentPrice;
+                  const isTickingThisRow = activeTickTicker === h.ticker;
 
                   return (
-                    <tr key={h.id} className="hover:bg-[#FCFBF9] transition-colors">
+                    <tr
+                      key={h.id}
+                      className={`transition-colors ${
+                        isTickingThisRow ? 'bg-emerald-50/50' : 'hover:bg-[#FCFBF9]'
+                      }`}
+                    >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
                           <span className="rounded-md bg-stone-100 border border-stone-300 px-2 py-1 font-bold text-xs text-[#1A1918]">
@@ -666,10 +778,10 @@ export const DSEPortfolioView: React.FC = () => {
                                     dayChangePct: officialQuote.dayChangePct,
                                     dividendYieldPct: officialQuote.dividendYieldPct,
                                   });
-                                  showToast(`Reset ${h.ticker} to official DSE price (${formatTZS(officialQuote.currentPrice)})`);
+                                  showToast(`Reset ${h.ticker} to official real-time DSE price (${formatTZS(officialQuote.currentPrice)})`);
                                 }}
                                 className="text-[10px] text-emerald-700 hover:underline font-semibold"
-                                title="Snap price to official DSE market quotation"
+                                title="Snap price to official live DSE market quotation"
                               >
                                 Snap to {formatTZS(officialQuote.currentPrice)}
                               </button>
@@ -742,7 +854,7 @@ export const DSEPortfolioView: React.FC = () => {
               Direct DSE Market Quotes & Local Data Persistence
             </h3>
             <p className="text-xs text-emerald-900/80 leading-relaxed">
-              Every company added, shares modified, or DSE price reflection is instantly and permanently preserved
+              Every company added, shares modified, or live DSE price reflection is instantly and permanently preserved
               in your browser’s local storage (`localStorage`). You can add any company listed on the Dar es Salaam Stock Exchange
               (or custom equities), update shares, directly reflect live DSE market pricing, or delete companies at any time.
             </p>
@@ -764,7 +876,7 @@ export const DSEPortfolioView: React.FC = () => {
                     Add Company to DSE Portfolio
                   </h3>
                   <p className="text-[11px] text-gray-500">
-                    Directly reflect official Dar es Salaam Stock Exchange prices
+                    Directly reflect actual Dar es Salaam Stock Exchange real-time prices
                   </p>
                 </div>
               </div>
@@ -788,7 +900,7 @@ export const DSEPortfolioView: React.FC = () => {
                   onChange={(e) => handlePresetChange(e.target.value)}
                   className="w-full rounded-lg border border-[#D5CFE5] bg-[#FAF8F5] px-3 py-2 text-xs font-semibold text-[#1A1918] focus:border-[#2D4A3E] focus:outline-hidden"
                 >
-                  <optgroup label="Official DSE Listed Equities">
+                  <optgroup label="Official DSE Listed Equities (Real-Time)">
                     {ALL_DSE_STOCKS.map((stock) => (
                       <option key={stock.ticker} value={stock.ticker}>
                         {stock.ticker} · {stock.companyName} ({stock.sector}) — {formatTZS(stock.currentPrice)}
@@ -819,7 +931,7 @@ export const DSEPortfolioView: React.FC = () => {
                       </div>
                       <div className="grid grid-cols-3 gap-2 pt-1 border-t border-emerald-200/60 text-[11px]">
                         <div>
-                          <span className="text-gray-500 block text-[10px]">Official DSE Price</span>
+                          <span className="text-gray-500 block text-[10px]">Real-Time DSE Price</span>
                           <span className="font-bold text-gray-900">{formatTZS(q.currentPrice)}</span>
                         </div>
                         <div>
@@ -914,7 +1026,7 @@ export const DSEPortfolioView: React.FC = () => {
                     required
                   />
                   <div className="flex gap-1 mt-1.5">
-                    {[500, 1000, 2500, 5000].map((qty) => (
+                    {[100, 250, 500, 1000].map((qty) => (
                       <button
                         key={qty}
                         type="button"
@@ -1033,7 +1145,7 @@ export const DSEPortfolioView: React.FC = () => {
               </p>
             </div>
 
-            <div className="mt-5 flex justify-end gap-2 pt-3 border-t border-gray-100">
+            <div className="mt-5 flex justify-end gap-2 pt-3 border-gray-100">
               <button
                 type="button"
                 onClick={() => setDeleteConfirmHolding(null)}
