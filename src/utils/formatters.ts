@@ -31,12 +31,12 @@ export function formatNumber(val: number, decimals: number = 0): string {
   });
 }
 
-export function formatPercent(val: number, decimals: number = 1): string {
-  if (isNaN(val) || val === null || val === undefined) return '0.0%';
-  return `${val.toFixed(decimals)}%`;
+export function formatPercent(val: number | null | undefined, decimals: number = 1): string {
+  if (val === null || val === undefined || isNaN(val) || !isFinite(val)) return '0.0%';
+  return `${Number(val).toFixed(decimals)}%`;
 }
 
-export function formatRatio(val: number, decimals: number = 2): string {
-  if (isNaN(val) || !isFinite(val)) return '0.00x';
-  return `${val.toFixed(decimals)}x`;
+export function formatRatio(val: number | null | undefined, decimals: number = 2): string {
+  if (val === null || val === undefined || isNaN(val) || !isFinite(val)) return '0.00x';
+  return `${Number(val).toFixed(decimals)}x`;
 }

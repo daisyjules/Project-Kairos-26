@@ -28,47 +28,112 @@ import {
 } from 'recharts';
 
 export const LoanDashboardView: React.FC = () => {
-  const { state, setActiveTab, updateLoan, loanCalc, klinFitzCalc, zanzibarCalc, poultryCalc } = useKairos();
+  const {
+    state,
+    setActiveTab,
+    updateLoan,
+    loanCalc,
+    klinFitzCalc,
+    steazyCalc,
+    zanzibarCalc,
+    poultryCalc,
+  } = useKairos();
   const loan = state.loan;
+  const [selectedYearFilter, setSelectedYearFilter] = React.useState<number | 'all'>('all');
+  const [searchMonth, setSearchMonth] = React.useState<string>('');
 
   const totalBusinessCashFlow =
     klinFitzCalc.monthlyOperatingProfit +
+    steazyCalc.monthlyNetProfit +
     zanzibarCalc.userProfitShare +
     poultryCalc.monthlyEquivalentProfit;
 
   // Comparison Waterfall Data
   const waterfallData = [
     {
-      name: 'Klin Fitz Profit',
+      name: 'Klin Fitz',
       amount: klinFitzCalc.monthlyOperatingProfit,
       fill: '#4E7764',
     },
     {
-      name: 'Zanzibar Share',
+      name: 'Steazy',
+      amount: steazyCalc.monthlyNetProfit,
+      fill: '#8B5CF6',
+    },
+    {
+      name: 'Zanzibar',
       amount: zanzibarCalc.userProfitShare,
       fill: '#7E9F8E',
     },
     {
-      name: 'Poultry Run-rate',
+      name: 'Poultry',
       amount: poultryCalc.monthlyEquivalentProfit,
       fill: '#C28458',
     },
     {
-      name: 'Total Business Cash',
+      name: 'Total Cash',
       amount: totalBusinessCashFlow,
       fill: '#2D4A3E',
     },
     {
-      name: 'Monthly Loan Obligation',
+      name: 'Loan Obligation',
       amount: -loan.monthlyRepayment,
       fill: '#E11D48',
     },
     {
-      name: 'Net Cash Cushion',
+      name: 'Net Cushion',
       amount: totalBusinessCashFlow - loan.monthlyRepayment,
       fill: totalBusinessCashFlow >= loan.monthlyRepayment ? '#10B981' : '#F43F5E',
     },
   ];
+
+  // 120 Months Amortization Schedule Calculation
+  const tenureMonths = loan.tenureMonths || 120;
+  const monthlyRate = (loan.interestRateAnnualPct || 18.5) / 100 / 12;
+  const startDate = new Date(loan.startDate || '2026-03-01');
+
+  const schedule = React.useMemo(() => {
+    let balance = loan.principal;
+    const rows = [];
+
+    for (let monthNum = 1; monthNum <= tenureMonths; monthNum++) {
+      const interest = Math.round(balance * monthlyRate);
+      let principalRepaid = Math.max(0, loan.monthlyRepayment - interest);
+      if (monthNum === tenureMonths || balance <= principalRepaid) {
+        principalRepaid = balance;
+      }
+      balance = Math.max(0, balance - principalRepaid);
+
+      const d = new Date(startDate);
+      d.setMonth(d.getMonth() + monthNum - 1);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const yearIndex = Math.ceil(monthNum / 12);
+
+      rows.push({
+        monthNum,
+        yearIndex,
+        dateStr,
+        payment: loan.monthlyRepayment,
+        principal: principalRepaid,
+        interest,
+        remainingBalance: balance,
+        pctPaid: Math.min(100, ((loan.principal - balance) / loan.principal) * 100),
+      });
+
+      if (balance === 0 && monthNum >= tenureMonths) break;
+    }
+    return rows;
+  }, [loan.principal, loan.monthlyRepayment, monthlyRate, tenureMonths, startDate]);
+
+  const filteredSchedule = schedule.filter((row) => {
+    if (searchMonth && !row.monthNum.toString().includes(searchMonth)) {
+      return false;
+    }
+    if (selectedYearFilter !== 'all' && row.yearIndex !== selectedYearFilter) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-8 pb-12">
@@ -168,7 +233,7 @@ export const LoanDashboardView: React.FC = () => {
         <StatCard
           label="Total Scheduled Repayments"
           value={formatTZS(loanCalc.totalRepayments)}
-          subValue={`Over ${loan.tenureMonths} months (${(loan.tenureMonths / 12).toFixed(1)} yrs)`}
+          subValue={`Over ${loan.tenureMonths || 120} months (${(((loan.tenureMonths || 120)) / 12).toFixed(1)} yrs)`}
           badge={{ text: 'Total Outflow', variant: 'neutral' }}
           icon={<TrendingDown className="h-4 w-4" />}
         />
@@ -246,8 +311,8 @@ export const LoanDashboardView: React.FC = () => {
                   unit="mos"
                   slider
                   min={12}
-                  max={60}
-                  helperText="Default: 48 months (4 years)"
+                  max={120}
+                  helperText="Configured: 120 months (10-year facility)"
                 />
 
                 <CurrencyInput
@@ -401,6 +466,166 @@ export const LoanDashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 120-Month Loan Repayment & Month Numbers Schedule */}
+      <section className="rounded-2xl border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900/90 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                120-Month Loan Repayment & Amortization Progression
+              </h2>
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 font-serif-body">
+              Detailed breakdown of each month from Month 1 through Month {tenureMonths}. Tracks cumulative principal clearance to full payoff.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search Month Input */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-stone-500">Jump to Month:</span>
+              <input
+                type="number"
+                placeholder="e.g. 60"
+                min="1"
+                max={tenureMonths}
+                value={searchMonth}
+                onChange={(e) => setSearchMonth(e.target.value)}
+                className="w-20 rounded-lg border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs text-stone-800 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+              />
+            </div>
+
+            {/* Year Quick Filter Selector */}
+            <select
+              value={selectedYearFilter}
+              onChange={(e) =>
+                setSelectedYearFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))
+              }
+              className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-stone-800 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+            >
+              <option value="all">All {tenureMonths} Months</option>
+              {Array.from({ length: Math.ceil(tenureMonths / 12) }, (_, i) => i + 1).map((yr) => (
+                <option key={yr} value={yr}>
+                  Year {yr} (Months {(yr - 1) * 12 + 1}–{Math.min(tenureMonths, yr * 12)})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Schedule Highlights Bar */}
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800">
+            <span className="text-stone-500 block">Total Horizon</span>
+            <strong className="text-stone-900 dark:text-stone-100 text-sm font-bold">
+              {tenureMonths} Months ({(((tenureMonths || 120)) / 12).toFixed(1)} Years)
+            </strong>
+          </div>
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800">
+            <span className="text-stone-500 block">Monthly Installment</span>
+            <strong className="text-stone-900 dark:text-stone-100 text-sm font-bold">
+              {formatTZS(loan.monthlyRepayment)}
+            </strong>
+          </div>
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-200 dark:border-stone-800">
+            <span className="text-stone-500 block">Year 5 (Month 60) Balance</span>
+            <strong className="text-amber-700 dark:text-amber-400 text-sm font-bold">
+              {formatTZS(schedule[Math.min(59, schedule.length - 1)]?.remainingBalance || 0)}
+            </strong>
+          </div>
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-900">
+            <span className="text-emerald-800 dark:text-emerald-300 block">Final Month {tenureMonths}</span>
+            <strong className="text-emerald-900 dark:text-emerald-200 text-sm font-bold">
+              Debt Fully Cleared 🎉
+            </strong>
+          </div>
+        </div>
+
+        {/* Scrollable Schedule Table with Month Numbers */}
+        <div className="mt-5 overflow-x-auto max-h-[420px] rounded-xl border border-stone-200 dark:border-stone-800">
+          <table className="w-full text-left text-xs">
+            <thead className="sticky top-0 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 font-semibold border-b border-stone-200 dark:border-stone-700">
+              <tr>
+                <th className="py-2.5 px-4">Month Number</th>
+                <th className="py-2.5 px-4">Calendar Date</th>
+                <th className="py-2.5 px-4">Year</th>
+                <th className="py-2.5 px-4">Monthly EMI</th>
+                <th className="py-2.5 px-4">Principal Repaid</th>
+                <th className="py-2.5 px-4">Interest Cost</th>
+                <th className="py-2.5 px-4">Remaining Balance</th>
+                <th className="py-2.5 px-4">Principal Cleared</th>
+                <th className="py-2.5 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-200 dark:divide-stone-800 bg-white dark:bg-stone-900">
+              {filteredSchedule.map((row) => {
+                const isMilestone =
+                  row.monthNum === 1 ||
+                  row.monthNum === 12 ||
+                  row.monthNum === 36 ||
+                  row.monthNum === 60 ||
+                  row.monthNum === 96 ||
+                  row.monthNum === tenureMonths;
+
+                return (
+                  <tr
+                    key={row.monthNum}
+                    className={`hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-colors ${
+                      isMilestone ? 'bg-amber-50/40 dark:bg-amber-950/20 font-medium' : ''
+                    }`}
+                  >
+                    <td className="py-2 px-4 font-bold text-stone-900 dark:text-stone-100">
+                      Month {row.monthNum}
+                    </td>
+                    <td className="py-2 px-4 text-stone-600 dark:text-stone-400">{row.dateStr}</td>
+                    <td className="py-2 px-4 text-stone-500">Year {row.yearIndex}</td>
+                    <td className="py-2 px-4 font-mono font-semibold">{formatTZS(row.payment)}</td>
+                    <td className="py-2 px-4 text-emerald-700 dark:text-emerald-400 font-mono">
+                      {formatTZS(row.principal)}
+                    </td>
+                    <td className="py-2 px-4 text-rose-600 dark:text-rose-400 font-mono">
+                      {formatTZS(row.interest)}
+                    </td>
+                    <td className="py-2 px-4 font-bold font-mono text-stone-900 dark:text-stone-100">
+                      {formatTZS(row.remainingBalance)}
+                    </td>
+                    <td className="py-2 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 rounded-full"
+                            style={{ width: `${row.pctPaid}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[10px] text-stone-500">{(row.pctPaid ?? 0).toFixed(1)}%</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-4">
+                      {row.monthNum === tenureMonths ? (
+                        <span className="rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 px-2 py-0.5 text-[10px] font-bold">
+                          Debt Free
+                        </span>
+                      ) : row.monthNum === 60 ? (
+                        <span className="rounded bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200 px-2 py-0.5 text-[10px] font-bold">
+                          Halfway (5 Yrs)
+                        </span>
+                      ) : row.monthNum === 12 ? (
+                        <span className="rounded bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-300 px-2 py-0.5 text-[10px]">
+                          Year 1 Complete
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-stone-400">Scheduled</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

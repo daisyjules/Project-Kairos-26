@@ -228,11 +228,14 @@ export const AllocationView: React.FC = () => {
                       1
                     </span>
                     <div>
-                      <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                        UTT / Investments
+                      <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                        UTT AMIS Liquid Reserve
+                        <span className="rounded bg-cyan-100 text-cyan-800 text-[10px] font-bold px-1.5 py-0.2">
+                          100% Liquid
+                        </span>
                       </h4>
                       <span className="text-[11px] text-stone-500 font-serif-body">
-                        Wealth preservation, liquid buffer & bond compounding
+                        T+1 liquid redemption buffer, capital preservation & bond compounding
                       </span>
                     </div>
                   </div>

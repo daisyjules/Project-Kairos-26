@@ -3,8 +3,12 @@ import {
   KairosState,
   AllocationBreakdown,
   KlinFitzModel,
+  SteazyModel,
+  SteazyFutureProduct,
   ZanzibarAirbnbModel,
   PoultryModel,
+  DSEStockHolding,
+  DSEPortfolioModel,
   UTTModel,
   CarModel,
   LaptopModel,
@@ -20,20 +24,25 @@ import {
 } from '../types';
 import {
   calculateKlinFitz,
+  calculateSteazy,
   calculateZanzibarAirbnb,
   calculatePoultry,
+  calculateDSEPortfolio,
   calculateUTT,
   calculateCar,
   calculateLoan,
   calculateMasterDashboard,
   KlinFitzCalculations,
+  SteazyCalculations,
   ZanzibarCalculations,
   PoultryCalculations,
+  DSEPortfolioCalculations,
   UTTCalculations,
   CarCalculations,
   LoanCalculations,
   MasterCalculations,
 } from '../utils/calculations';
+import { OFFICIAL_DSE_QUOTES } from '../data/dseEquities';
 
 const STORAGE_KEY = 'project_kairos_26_state_v1';
 
@@ -77,6 +86,46 @@ export const INITIAL_STATE: KairosState = {
     hospitalityContractRevenue: 450_000,
     hospitalityContractVariableCost: 120_000,
     activeScenario: 'base',
+  },
+  steazy: {
+    initialCapital: 1_500_000,
+    monthlyOperatingExpenses: 350_000,
+    tshirtsProducedPerMonth: 120,
+    blankCostPerUnit: 8_000,
+    printingCostPerUnit: 3_500,
+    tagPackagingCostPerUnit: 1_500,
+    retailSellingPrice: 28_000,
+    wholesaleSellingPrice: 18_000,
+    retailSalesPct: 80,
+    futureProducts: [
+      {
+        id: 'prod-totes',
+        name: 'Canvas Tote Bags',
+        targetLaunchQuarter: 'Q3 2026',
+        targetSellingPrice: 22_000,
+        targetUnitCost: 7_500,
+        status: 'Sampling',
+        notes: 'Heavyweight organic raw canvas with reinforced handles and inner zip pocket.',
+      },
+      {
+        id: 'prod-caps',
+        name: 'Structured Dad Caps & Beanies',
+        targetLaunchQuarter: 'Q4 2026',
+        targetSellingPrice: 25_000,
+        targetUnitCost: 9_000,
+        status: 'Prototyping',
+        notes: 'Embroidery on 6-panel washed cotton twill with antique brass buckle.',
+      },
+      {
+        id: 'prod-sneakers',
+        name: 'Steazy Low Minimalist Sneakers',
+        targetLaunchQuarter: '2027 Expansion',
+        targetSellingPrice: 95_000,
+        targetUnitCost: 38_000,
+        status: 'Idea',
+        notes: 'Sleek cupsole silhouette, premium leather upper, custom molded rubber outsole.',
+      },
+    ],
   },
   zanzibarAirbnb: {
     totalStartupCost: 6_000_000,
@@ -158,13 +207,68 @@ export const INITIAL_STATE: KairosState = {
       },
     ],
   },
+  dsePortfolio: {
+    holdings: [
+      {
+        id: 'dse-crdb',
+        ticker: 'CRDB',
+        companyName: 'CRDB Bank Plc',
+        sharesHeld: 4000,
+        buyPrice: 560,
+        currentPrice: 620,
+        dividendYieldPct: 8.2,
+        dayChangePct: 1.64,
+        sector: 'Banking',
+      },
+      {
+        id: 'dse-nmb',
+        ticker: 'NMB',
+        companyName: 'NMB Bank Plc',
+        sharesHeld: 450,
+        buyPrice: 4800,
+        currentPrice: 5400,
+        dividendYieldPct: 7.1,
+        dayChangePct: 0.93,
+        sector: 'Banking',
+      },
+      {
+        id: 'dse-tpcc',
+        ticker: 'TPCC',
+        companyName: 'Tanzania Portland Cement (Twiga)',
+        sharesHeld: 250,
+        buyPrice: 4100,
+        currentPrice: 4350,
+        dividendYieldPct: 9.0,
+        dayChangePct: -0.45,
+        sector: 'Manufacturing',
+      },
+      {
+        id: 'dse-dse',
+        ticker: 'DSE',
+        companyName: 'Dar es Salaam Stock Exchange PLC',
+        sharesHeld: 500,
+        buyPrice: 2100,
+        currentPrice: 2400,
+        dividendYieldPct: 10.4,
+        dayChangePct: 2.13,
+        sector: 'Financial Services',
+      },
+    ],
+    cashBalance: 250_000,
+    lastUpdated: '2026-03-24T14:30:00Z',
+    milestonesReached: [5_000_000],
+    reflectLiveDSEPricing: true,
+  },
   utt: {
     investmentAmount: 10_000_000,
     expectedAnnualReturnPct: 13.5,
     investmentPeriodYears: 10,
     monthlyContribution: 0,
     reinvestReturns: true,
-    fundName: 'UTT AMIS Liquid / Bond Fund',
+    fundName: 'UTT AMIS Liquid Fund',
+    fundType: 'liquid',
+    isLiquid: true,
+    liquidityTurnaroundDays: 1,
   },
   car: {
     purchasePrice: 8_500_000,
@@ -192,7 +296,7 @@ export const INITIAL_STATE: KairosState = {
     principal: 30_000_000,
     actualNetCashReceived: 28_800_000,
     monthlyRepayment: 950_000,
-    tenureMonths: 48,
+    tenureMonths: 120,
     interestRateAnnualPct: 18.5,
     originationFees: 800_000,
     insuranceCost: 400_000,
@@ -421,10 +525,24 @@ interface KairosContextType {
   updateAllocations: (allocations: Partial<AllocationBreakdown>) => void;
   updateKlinFitz: (klinFitz: Partial<KlinFitzModel>) => void;
   applyKlinFitzScenario: (scenario: ScenarioType) => void;
+  updateSteazy: (steazy: Partial<SteazyModel>) => void;
+  addSteazyFutureProduct: (product: Omit<SteazyFutureProduct, 'id'>) => void;
+  updateSteazyFutureProduct: (id: string, product: Partial<SteazyFutureProduct>) => void;
+  deleteSteazyFutureProduct: (id: string) => void;
   updateZanzibar: (zanzibar: Partial<ZanzibarAirbnbModel>) => void;
   updatePoultry: (poultry: Partial<PoultryModel>) => void;
   updatePoultryCycle: (index: number, cycle: Partial<PoultryModel['cycles'][0]>) => void;
+  updateDSEPortfolio: (dse: Partial<DSEPortfolioModel>) => void;
+  addDSEHolding: (holding: Omit<DSEStockHolding, 'id'>) => void;
+  updateDSEHolding: (id: string, holding: Partial<DSEStockHolding>) => void;
+  deleteDSEHolding: (id: string) => void;
+  syncDSEMarketData: () => void;
+  reflectOfficialDSEPrices: () => void;
+  restoreDefaultDSEHoldings: () => void;
+  recordDSEMilestoneDecision: (milestone: number, decision: 'withdraw' | 'reinvest_utt' | 'hold_compound') => void;
   updateUTT: (utt: Partial<UTTModel>) => void;
+  redeemUTTLiquid: (amount: number) => void;
+  depositToUTT: (amount: number) => void;
   updateCar: (car: Partial<CarModel>) => void;
   updateLaptop: (laptop: Partial<LaptopModel>) => void;
   updateLoan: (loan: Partial<LoanModel>) => void;
@@ -454,8 +572,10 @@ interface KairosContextType {
 
   // Calculated models
   klinFitzCalc: KlinFitzCalculations;
+  steazyCalc: SteazyCalculations;
   zanzibarCalc: ZanzibarCalculations;
   poultryCalc: PoultryCalculations;
+  dseCalc: DSEPortfolioCalculations;
   uttCalc: UTTCalculations;
   carCalc: CarCalculations;
   loanCalc: LoanCalculations;
@@ -475,12 +595,36 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           ...parsed,
           allocations: { ...INITIAL_STATE.allocations, ...(parsed.allocations || {}) },
           klinFitz: { ...INITIAL_STATE.klinFitz, ...(parsed.klinFitz || {}) },
+          steazy: {
+            ...INITIAL_STATE.steazy,
+            ...(parsed.steazy || {}),
+            futureProducts:
+              parsed.steazy?.futureProducts && parsed.steazy.futureProducts.length > 0
+                ? parsed.steazy.futureProducts
+                : INITIAL_STATE.steazy.futureProducts,
+          },
           zanzibarAirbnb: { ...INITIAL_STATE.zanzibarAirbnb, ...(parsed.zanzibarAirbnb || {}) },
           poultry: { ...INITIAL_STATE.poultry, ...(parsed.poultry || {}) },
+          dsePortfolio: {
+            ...INITIAL_STATE.dsePortfolio,
+            ...(parsed.dsePortfolio || {}),
+            holdings:
+              parsed.dsePortfolio?.holdings && parsed.dsePortfolio.holdings.length > 0
+                ? parsed.dsePortfolio.holdings
+                : INITIAL_STATE.dsePortfolio.holdings,
+            milestonesReached:
+              parsed.dsePortfolio?.milestonesReached && parsed.dsePortfolio.milestonesReached.length > 0
+                ? parsed.dsePortfolio.milestonesReached
+                : INITIAL_STATE.dsePortfolio.milestonesReached,
+          },
           utt: { ...INITIAL_STATE.utt, ...(parsed.utt || {}) },
           car: { ...INITIAL_STATE.car, ...(parsed.car || {}) },
           laptop: { ...INITIAL_STATE.laptop, ...(parsed.laptop || {}) },
-          loan: { ...INITIAL_STATE.loan, ...(parsed.loan || {}) },
+          loan: {
+            ...INITIAL_STATE.loan,
+            ...(parsed.loan || {}),
+            tenureMonths: parsed.loan?.tenureMonths || 120,
+          },
           retroAtelier: { ...INITIAL_STATE.retroAtelier, ...(parsed.retroAtelier || {}) },
           heroQuote: parsed.heroQuote || INITIAL_STATE.heroQuote,
           diaryEntries: parsed.diaryEntries || INITIAL_STATE.diaryEntries,
@@ -595,6 +739,52 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
+  const updateSteazy = (steazy: Partial<SteazyModel>) => {
+    setState((prev) => ({
+      ...prev,
+      steazy: {
+        ...prev.steazy,
+        ...steazy,
+      },
+    }));
+  };
+
+  const addSteazyFutureProduct = (product: Omit<SteazyFutureProduct, 'id'>) => {
+    setState((prev) => ({
+      ...prev,
+      steazy: {
+        ...prev.steazy,
+        futureProducts: [
+          ...prev.steazy.futureProducts,
+          {
+            ...product,
+            id: `prod-${Date.now()}`,
+          },
+        ],
+      },
+    }));
+  };
+
+  const updateSteazyFutureProduct = (id: string, product: Partial<SteazyFutureProduct>) => {
+    setState((prev) => ({
+      ...prev,
+      steazy: {
+        ...prev.steazy,
+        futureProducts: prev.steazy.futureProducts.map((p) => (p.id === id ? { ...p, ...product } : p)),
+      },
+    }));
+  };
+
+  const deleteSteazyFutureProduct = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      steazy: {
+        ...prev.steazy,
+        futureProducts: prev.steazy.futureProducts.filter((p) => p.id !== id),
+      },
+    }));
+  };
+
   const updateZanzibar = (zanzibar: Partial<ZanzibarAirbnbModel>) => {
     setState((prev) => {
       const next = { ...prev.zanzibarAirbnb, ...zanzibar };
@@ -648,6 +838,206 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         poultry: { ...prev.poultry, cycles: newCycles },
       };
     });
+  };
+
+  const updateDSEPortfolio = (dse: Partial<DSEPortfolioModel>) => {
+    setState((prev) => ({
+      ...prev,
+      dsePortfolio: {
+        ...prev.dsePortfolio,
+        ...dse,
+      },
+    }));
+  };
+
+  const addDSEHolding = (holding: Omit<DSEStockHolding, 'id'>) => {
+    setState((prev) => {
+      const official = OFFICIAL_DSE_QUOTES[holding.ticker.toUpperCase().trim()];
+      const newHolding: DSEStockHolding = {
+        ...holding,
+        id: `dse-${holding.ticker.toLowerCase()}-${Date.now()}`,
+        currentPrice: official ? official.currentPrice : holding.currentPrice,
+        companyName: holding.companyName || (official ? official.companyName : holding.ticker),
+        officialDSEPrice: official ? official.currentPrice : holding.currentPrice,
+        dividendYieldPct: holding.dividendYieldPct ?? (official ? official.dividendYieldPct : 0),
+        dayChangePct: holding.dayChangePct ?? (official ? official.dayChangePct : 0),
+        sector: holding.sector || (official ? official.sector : 'Banking'),
+      };
+      return {
+        ...prev,
+        dsePortfolio: {
+          ...prev.dsePortfolio,
+          holdings: [...prev.dsePortfolio.holdings, newHolding],
+        },
+      };
+    });
+  };
+
+  const updateDSEHolding = (id: string, holding: Partial<DSEStockHolding>) => {
+    setState((prev) => ({
+      ...prev,
+      dsePortfolio: {
+        ...prev.dsePortfolio,
+        holdings: prev.dsePortfolio.holdings.map((h) => (h.id === id ? { ...h, ...holding } : h)),
+      },
+    }));
+  };
+
+  const deleteDSEHolding = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      dsePortfolio: {
+        ...prev.dsePortfolio,
+        holdings: prev.dsePortfolio.holdings.filter((h) => h.id !== id),
+      },
+    }));
+  };
+
+  const syncDSEMarketData = () => {
+    setState((prev) => {
+      const updatedHoldings = (prev.dsePortfolio.holdings || []).map((h) => {
+        const official = OFFICIAL_DSE_QUOTES[h.ticker.toUpperCase().trim()];
+        if (official) {
+          return {
+            ...h,
+            companyName: h.companyName || official.companyName,
+            currentPrice: official.currentPrice,
+            dayChangePct: official.dayChangePct,
+            dividendYieldPct: official.dividendYieldPct,
+            sector: official.sector,
+            officialDSEPrice: official.currentPrice,
+          };
+        }
+        // Small realistic market drift if custom stock: -1.5% to +2.0%
+        const deltaPct = Number(((Math.random() * 3.5 - 1.5)).toFixed(2));
+        const newPrice = Math.max(10, Math.round(h.currentPrice * (1 + deltaPct / 100)));
+        return {
+          ...h,
+          currentPrice: newPrice,
+          dayChangePct: deltaPct,
+        };
+      });
+
+      const totalVal =
+        updatedHoldings.reduce((sum, h) => sum + h.sharesHeld * h.currentPrice, 0) +
+        (prev.dsePortfolio.cashBalance || 0);
+
+      const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+      const reached = milestoneTargets.filter((thresh) => totalVal >= thresh);
+
+      return {
+        ...prev,
+        dsePortfolio: {
+          ...prev.dsePortfolio,
+          holdings: updatedHoldings,
+          lastUpdated: new Date().toISOString(),
+          milestonesReached: reached,
+        },
+      };
+    });
+  };
+
+  const reflectOfficialDSEPrices = () => {
+    setState((prev) => {
+      const updatedHoldings = (prev.dsePortfolio.holdings || []).map((h) => {
+        const official = OFFICIAL_DSE_QUOTES[h.ticker.toUpperCase().trim()];
+        if (official) {
+          return {
+            ...h,
+            companyName: official.companyName,
+            currentPrice: official.currentPrice,
+            dayChangePct: official.dayChangePct,
+            dividendYieldPct: official.dividendYieldPct,
+            sector: official.sector,
+            officialDSEPrice: official.currentPrice,
+          };
+        }
+        return h;
+      });
+
+      const totalVal =
+        updatedHoldings.reduce((sum, h) => sum + h.sharesHeld * h.currentPrice, 0) +
+        (prev.dsePortfolio.cashBalance || 0);
+
+      const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+      const reached = milestoneTargets.filter((thresh) => totalVal >= thresh);
+
+      return {
+        ...prev,
+        dsePortfolio: {
+          ...prev.dsePortfolio,
+          holdings: updatedHoldings,
+          lastUpdated: new Date().toISOString(),
+          milestonesReached: reached,
+          reflectLiveDSEPricing: true,
+        },
+      };
+    });
+  };
+
+  const restoreDefaultDSEHoldings = () => {
+    setState((prev) => ({
+      ...prev,
+      dsePortfolio: {
+        ...prev.dsePortfolio,
+        holdings: INITIAL_STATE.dsePortfolio.holdings,
+        reflectLiveDSEPricing: true,
+      },
+    }));
+  };
+
+  const redeemUTTLiquid = (amount: number) => {
+    setState((prev) => {
+      const redeemAmt = Math.min(prev.utt.investmentAmount, Math.max(0, amount));
+      if (redeemAmt <= 0) return prev;
+      return {
+        ...prev,
+        utt: {
+          ...prev.utt,
+          investmentAmount: prev.utt.investmentAmount - redeemAmt,
+        },
+        allocations: {
+          ...prev.allocations,
+          utt: prev.allocations.utt - redeemAmt,
+          cashReserve: prev.allocations.cashReserve + redeemAmt,
+        },
+      };
+    });
+  };
+
+  const depositToUTT = (amount: number) => {
+    setState((prev) => {
+      const depositAmt = Math.max(0, amount);
+      if (depositAmt <= 0) return prev;
+      return {
+        ...prev,
+        utt: {
+          ...prev.utt,
+          investmentAmount: prev.utt.investmentAmount + depositAmt,
+        },
+        allocations: {
+          ...prev.allocations,
+          utt: prev.allocations.utt + depositAmt,
+        },
+      };
+    });
+  };
+
+  const recordDSEMilestoneDecision = (
+    milestone: number,
+    decision: 'withdraw' | 'reinvest_utt' | 'hold_compound'
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      dsePortfolio: {
+        ...prev.dsePortfolio,
+        userMilestoneDecision: {
+          milestone,
+          decision,
+          timestamp: new Date().toISOString(),
+        },
+      },
+    }));
   };
 
   const updateUTT = (utt: Partial<UTTModel>) => {
@@ -909,12 +1299,15 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Calculations
   const klinFitzCalc = calculateKlinFitz(state.klinFitz, state.loan.monthlyRepayment);
+  const steazyCalc = calculateSteazy(state.steazy);
   const zanzibarCalc = calculateZanzibarAirbnb(state.zanzibarAirbnb);
   const poultryCalc = calculatePoultry(state.poultry);
+  const dseCalc = calculateDSEPortfolio(state.dsePortfolio);
   const uttCalc = calculateUTT(state.utt);
   const carCalc = calculateCar(state.car);
   const totalBusinessCashFlow =
     klinFitzCalc.monthlyOperatingProfit +
+    steazyCalc.monthlyNetProfit +
     zanzibarCalc.userProfitShare +
     poultryCalc.monthlyEquivalentProfit;
   const loanCalc = calculateLoan(state.loan, totalBusinessCashFlow);
@@ -926,7 +1319,9 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     uttCalc,
     carCalc,
     state.laptop,
-    state.loan
+    state.loan,
+    steazyCalc,
+    dseCalc
   );
 
   return (
@@ -938,10 +1333,24 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         updateAllocations,
         updateKlinFitz,
         applyKlinFitzScenario,
+        updateSteazy,
+        addSteazyFutureProduct,
+        updateSteazyFutureProduct,
+        deleteSteazyFutureProduct,
         updateZanzibar,
         updatePoultry,
         updatePoultryCycle,
+        updateDSEPortfolio,
+        addDSEHolding,
+        updateDSEHolding,
+        deleteDSEHolding,
+        syncDSEMarketData,
+        reflectOfficialDSEPrices,
+        restoreDefaultDSEHoldings,
+        recordDSEMilestoneDecision,
         updateUTT,
+        redeemUTTLiquid,
+        depositToUTT,
         updateCar,
         updateLaptop,
         updateLoan,
@@ -964,8 +1373,10 @@ export const KairosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         exportStateJSON,
         importStateJSON,
         klinFitzCalc,
+        steazyCalc,
         zanzibarCalc,
         poultryCalc,
+        dseCalc,
         uttCalc,
         carCalc,
         loanCalc,

@@ -11,6 +11,7 @@ import { KlinFitzView } from './components/KlinFitzView';
 import { ZanzibarView } from './components/ZanzibarView';
 import { PoultryView } from './components/PoultryView';
 import { MamaKubwaView } from './components/MamaKubwaView';
+import { DSEPortfolioView } from './components/DSEPortfolioView';
 import { UTTView } from './components/UTTView';
 import { CarLaptopView } from './components/CarLaptopView';
 import { LoanDashboardView } from './components/LoanDashboardView';
@@ -47,6 +48,8 @@ const DashboardContent: React.FC = () => {
         return <MamaKubwaView />;
       case 'steazy':
         return <SteazyView />;
+      case 'dse':
+        return <DSEPortfolioView />;
       case 'utt':
         return <UTTView />;
       case 'car_laptop':

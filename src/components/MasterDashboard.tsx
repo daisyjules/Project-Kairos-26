@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   Calendar,
   Sparkles,
+  Tag,
+  Landmark,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -35,6 +37,8 @@ import zanzibarImg from '../assets/images/zanzibar_beach_1787307751785.jpg';
 import laundryImg from '../assets/images/clean_laundry_1787307764343.jpg';
 import poultryImg from '../assets/images/poultry_farm_1787307776327.jpg';
 import wealthImg from '../assets/images/wealth_plant_1787307790696.jpg';
+import steazyHeroImg from '../assets/images/steazy_fashion_studio_1790167296402.jpg';
+import dseHeroImg from '../assets/images/dse_stock_exchange_1790167309543.jpg';
 
 import { EditableText } from './EditableText';
 import { QuickNumbersModal } from './QuickNumbersModal';
@@ -45,8 +49,10 @@ export const MasterDashboard: React.FC = () => {
     setActiveTab,
     masterCalc,
     klinFitzCalc,
+    steazyCalc,
     zanzibarCalc,
     poultryCalc,
+    dseCalc,
     uttCalc,
     updateHeroQuote,
   } = useKairos();
@@ -68,10 +74,16 @@ export const MasterDashboard: React.FC = () => {
   // How each investment yields
   const yieldComparisonData = [
     {
-      name: 'Klin Fitz',
+      name: 'Klin Fitz Laundry',
       shortName: 'Laundry',
       monthlyNetProfit: klinFitzCalc.monthlyOperatingProfit,
       fill: '#059669',
+    },
+    {
+      name: 'Steazy Apparel',
+      shortName: 'Steazy',
+      monthlyNetProfit: steazyCalc.monthlyNetProfit,
+      fill: '#8B5CF6',
     },
     {
       name: 'Zanzibar Airbnb',
@@ -86,6 +98,12 @@ export const MasterDashboard: React.FC = () => {
       fill: '#65A30D',
     },
     {
+      name: 'DSE Equities (Dividends)',
+      shortName: 'DSE Shares',
+      monthlyNetProfit: Math.round(dseCalc.annualEstimatedDividends / 12),
+      fill: '#10B981',
+    },
+    {
       name: 'UTT Bond Fund',
       shortName: 'UTT Fund',
       monthlyNetProfit: uttCalc.monthlyEquivalentReturn,
@@ -95,6 +113,7 @@ export const MasterDashboard: React.FC = () => {
 
   const totalMonthlyBusinessCash =
     klinFitzCalc.monthlyOperatingProfit +
+    steazyCalc.monthlyNetProfit +
     zanzibarCalc.userProfitShare +
     poultryCalc.monthlyEquivalentProfit;
 
@@ -215,7 +234,7 @@ export const MasterDashboard: React.FC = () => {
             <div className="flex items-center justify-between text-xs text-gray-700 mb-1.5">
               <span className="font-semibold text-gray-900 text-sm">Total Venture Inflow</span>
               <span className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-bold text-blue-800">
-                3 Cash Engines
+                4 Cash Engines
               </span>
             </div>
 
@@ -228,29 +247,33 @@ export const MasterDashboard: React.FC = () => {
           </div>
 
           <p className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600">
-            Klin Fitz ({formatTZS(klinFitzCalc.monthlyOperatingProfit, true)}) + Zanzibar ({formatTZS(zanzibarCalc.userProfitShare, true)}) + Poultry ({formatTZS(poultryCalc.monthlyEquivalentProfit, true)}).
+            Klin Fitz ({formatTZS(klinFitzCalc.monthlyOperatingProfit, true)}) + Steazy ({formatTZS(steazyCalc.monthlyNetProfit, true)}) + Zanzibar ({formatTZS(zanzibarCalc.userProfitShare, true)}) + Poultry ({formatTZS(poultryCalc.monthlyEquivalentProfit, true)}).
           </p>
         </div>
 
-        {/* Metric 3: Liquid Safety Buffer */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-2xs flex flex-col justify-between">
+        {/* Metric 3: Total Liquid Capital & Solvency Runway */}
+        <div className="rounded-xl border border-emerald-200 bg-white p-5 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs text-gray-700 mb-1.5">
-              <span className="font-semibold text-gray-900 text-sm">Liquid Safety Buffer</span>
-              <span className="rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-bold text-amber-800">
-                {formatPercent(masterCalc.reservePct)} Protected
+              <span className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                Total Liquid Reserves
+              </span>
+              <span className="rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                {masterCalc.liquidRunwayMonths} Mos Debt Runway
               </span>
             </div>
 
-            <div className="my-2 flex items-baseline gap-1">
+            <div className="my-2 flex items-baseline gap-1.5">
               <span className="text-3xl font-bold font-mono-num text-gray-950 tracking-tight">
-                {formatTZS(state.allocations.cashReserve)}
+                {formatTZS(masterCalc.totalLiquidCapital)}
               </span>
+              <span className="text-xs font-medium text-emerald-700">liquid</span>
             </div>
           </div>
 
           <p className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600">
-            Untouchable cash reserve sitting in the bank for operational stability.
+            Bank cash ({formatTZS(state.allocations.cashReserve, true)}) + Liquid UTT ({formatTZS(state.allocations.utt, true)}) + Broker cash ({formatTZS(dseCalc.uninvestedCash, true)}). 100% accessible in 24–48h.
           </p>
         </div>
       </div>
@@ -311,6 +334,55 @@ export const MasterDashboard: React.FC = () => {
 
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-700 group-hover:text-black">
                 <span>View Operations & Equipment</span>
+                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </div>
+
+          {/* Steazy Fashion Studio Card */}
+          <div
+            onClick={() => setActiveTab('steazy')}
+            className="group rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs hover:border-violet-600 hover:shadow-xs transition-all cursor-pointer flex flex-col"
+          >
+            <div className="relative h-36 w-full overflow-hidden bg-gray-100">
+              <img
+                src={steazyHeroImg}
+                alt="Steazy Studio"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              <div className="absolute top-2.5 right-2.5 rounded-md bg-black/60 backdrop-blur-xs px-2 py-1 text-[11px] font-bold text-white font-mono-num">
+                {formatTZS(state.steazy.initialCapital, true)} Cap
+              </div>
+              <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-md bg-violet-950/80 backdrop-blur-xs px-2 py-1 text-xs font-semibold text-violet-200">
+                <Tag className="h-3.5 w-3.5" />
+                <span>Steazy Fashion Studio</span>
+              </div>
+            </div>
+
+            <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  Minimalist streetwear brand producing quality t-shirts, expanding into totes, caps & sneakers.
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded bg-gray-50 border border-gray-100">
+                    <span className="text-gray-500 block text-[10px]">Monthly Production</span>
+                    <span className="font-bold text-gray-900 font-mono-num">
+                      {state.steazy.tshirtsProducedPerMonth} tees/mo
+                    </span>
+                  </div>
+                  <div className="p-2 rounded bg-violet-50/80 border border-violet-100">
+                    <span className="text-violet-800 block text-[10px] font-semibold">Net Profit Margin</span>
+                    <span className="font-bold text-violet-950 font-mono-num">
+                      {(steazyCalc?.netMarginPct ?? 0).toFixed(0)}% (+{formatTZS(steazyCalc?.monthlyNetProfit ?? 0, true)}/mo)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-700 group-hover:text-black">
+                <span>View Fashion Drops & Costs</span>
                 <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
@@ -414,7 +486,7 @@ export const MasterDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 4: UTT AMIS Bond Fund */}
+          {/* Card 4: UTT AMIS Liquid Fund */}
           <div
             onClick={() => setActiveTab('utt')}
             className="group rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs hover:border-gray-900 hover:shadow-xs transition-all cursor-pointer flex flex-col"
@@ -426,19 +498,21 @@ export const MasterDashboard: React.FC = () => {
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute top-2.5 right-2.5 rounded-md bg-black/60 backdrop-blur-xs px-2 py-1 text-[11px] font-bold text-white font-mono-num">
-                {formatTZS(state.allocations.utt, true)} Cap
+              <div className="absolute top-2.5 right-2.5 rounded-md bg-emerald-950/80 backdrop-blur-xs px-2 py-1 text-[11px] font-bold text-white font-mono-num flex items-center gap-1">
+                <span>100% Liquid</span>
+                <span>•</span>
+                <span>{formatTZS(state.allocations.utt, true)}</span>
               </div>
               <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-md bg-gray-950/80 backdrop-blur-xs px-2 py-1 text-xs font-semibold text-gray-200">
                 <TrendingUp className="h-3.5 w-3.5" />
-                <span>UTT AMIS Bond Fund</span>
+                <span>{state.utt.fundName || 'UTT AMIS Liquid Fund'}</span>
               </div>
             </div>
 
             <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
               <div className="space-y-2">
                 <p className="text-xs text-gray-600 line-clamp-2">
-                  Untouchable wealth preservation compounding safely at 13.5% annual yield.
+                  High-yield liquid reserve compounding at {state.utt.expectedAnnualReturnPct}% p.a. with T+1 fast redemption to bank/M-Pesa.
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2 rounded bg-gray-50 border border-gray-100">
@@ -447,17 +521,68 @@ export const MasterDashboard: React.FC = () => {
                       {state.utt.expectedAnnualReturnPct}% p.a.
                     </span>
                   </div>
-                  <div className="p-2 rounded bg-gray-100 border border-gray-200">
-                    <span className="text-gray-700 block text-[10px] font-semibold">5-Year Value</span>
-                    <span className="font-bold text-gray-950 font-mono-num">
-                      {formatTZS(uttCalc.projectedValue5Y, true)}
+                  <div className="p-2 rounded bg-cyan-50/80 border border-cyan-100">
+                    <span className="text-cyan-800 block text-[10px] font-semibold">Debt Runway</span>
+                    <span className="font-bold text-cyan-950 font-mono-num">
+                      {state.loan.monthlyRepayment > 0
+                        ? `${(state.utt.investmentAmount / state.loan.monthlyRepayment).toFixed(1)} Months`
+                        : 'Covered'}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-700 group-hover:text-black">
-                <span>View Compound Projections</span>
+                <span>View Liquid Reserve & Compounding</span>
+                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </div>
+
+          {/* DSE Shares & Equities Card */}
+          <div
+            onClick={() => setActiveTab('dse')}
+            className="group rounded-xl border border-gray-200 bg-white overflow-hidden shadow-2xs hover:border-emerald-600 hover:shadow-xs transition-all cursor-pointer flex flex-col"
+          >
+            <div className="relative h-36 w-full overflow-hidden bg-gray-100">
+              <img
+                src={dseHeroImg}
+                alt="DSE Dar es Salaam Stock Exchange"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              <div className="absolute top-2.5 right-2.5 rounded-md bg-emerald-950/80 backdrop-blur-xs px-2 py-1 text-[11px] font-bold text-white font-mono-num">
+                {formatTZS(dseCalc.totalPortfolioValue, true)} Value
+              </div>
+              <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-md bg-emerald-950/80 backdrop-blur-xs px-2 py-1 text-xs font-semibold text-emerald-200">
+                <Landmark className="h-3.5 w-3.5" />
+                <span>DSE Stock Portfolio</span>
+              </div>
+            </div>
+
+            <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs text-gray-600 line-clamp-2">
+                  Shares directly reflect official Dar es Salaam Stock Exchange prices with live ticker ledger.
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded bg-gray-50 border border-gray-100">
+                    <span className="text-gray-500 block text-[10px]">Active Holdings</span>
+                    <span className="font-bold text-gray-900 font-mono-num">
+                      {state.dsePortfolio.holdings.length} companies
+                    </span>
+                  </div>
+                  <div className="p-2 rounded bg-emerald-50/80 border border-emerald-100">
+                    <span className="text-emerald-800 block text-[10px] font-semibold">Total Gain / ROI</span>
+                    <span className="font-bold text-emerald-950 font-mono-num">
+                      {(dseCalc?.totalGainLoss ?? 0) >= 0 ? '+' : ''}{formatTZS(dseCalc?.totalGainLoss ?? 0, true)} ({(dseCalc?.totalGainLossPct ?? 0).toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-semibold text-gray-700 group-hover:text-black">
+                <span>View DSE Market Quotes & Add Company</span>
                 <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>

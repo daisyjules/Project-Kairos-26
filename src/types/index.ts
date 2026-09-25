@@ -108,6 +108,9 @@ export interface UTTModel {
   monthlyContribution: number;
   reinvestReturns: boolean;
   fundName: string;
+  fundType?: 'liquid' | 'umoja' | 'wekeza' | 'jikimu' | 'watoto';
+  isLiquid?: boolean;
+  liquidityTurnaroundDays?: number;
 }
 
 export interface CarModel {
@@ -145,6 +148,55 @@ export interface LoanModel {
   originationFees: number;
   insuranceCost: number;
   startDate: string;
+}
+
+export interface SteazyFutureProduct {
+  id: string;
+  name: string; // 'Totes' | 'Caps' | 'Sneakers' | 'Hoodies'
+  targetLaunchQuarter: string;
+  targetSellingPrice: number;
+  targetUnitCost: number;
+  status: 'Idea' | 'Prototyping' | 'Sampling' | 'Ready';
+  notes: string;
+}
+
+export interface SteazyModel {
+  initialCapital: number;
+  monthlyOperatingExpenses: number;
+  tshirtsProducedPerMonth: number;
+  blankCostPerUnit: number;
+  printingCostPerUnit: number;
+  tagPackagingCostPerUnit: number;
+  retailSellingPrice: number;
+  wholesaleSellingPrice: number;
+  retailSalesPct: number; // e.g. 80 means 80% retail, 20% wholesale
+  futureProducts: SteazyFutureProduct[];
+}
+
+export interface DSEStockHolding {
+  id: string;
+  ticker: string; // e.g. 'CRDB', 'NMB', 'TBL', 'TPCC', 'VODA', 'DSE'
+  companyName: string;
+  sharesHeld: number;
+  buyPrice: number; // TZS
+  currentPrice: number; // TZS
+  dividendYieldPct: number; // e.g. 8.5%
+  dayChangePct: number; // e.g. +1.8%
+  sector: 'Banking' | 'Manufacturing' | 'Telecom' | 'Financial Services' | 'Energy' | 'Consumer Goods';
+  officialDSEPrice?: number;
+}
+
+export interface DSEPortfolioModel {
+  holdings: DSEStockHolding[];
+  cashBalance: number; // Uninvested cash in trading account
+  lastUpdated: string;
+  milestonesReached: number[]; // e.g. [5000000, 6000000, 10000000]
+  userMilestoneDecision?: {
+    milestone: number;
+    decision: 'withdraw' | 'reinvest_utt' | 'hold_compound';
+    timestamp: string;
+  };
+  reflectLiveDSEPricing?: boolean;
 }
 
 export interface RetroAtelierModel {
@@ -221,10 +273,11 @@ export type TabKey =
   | 'dashboard'
   | 'diary'
   | 'klinfitz'
+  | 'steazy'
   | 'zanzibar'
   | 'poultry'
   | 'mama_kubwa'
-  | 'steazy'
+  | 'dse'
   | 'utt'
   | 'loan'
   | 'allocation'
@@ -243,8 +296,10 @@ export interface KairosState {
   };
   allocations: AllocationBreakdown;
   klinFitz: KlinFitzModel;
+  steazy: SteazyModel;
   zanzibarAirbnb: ZanzibarAirbnbModel;
   poultry: PoultryModel;
+  dsePortfolio: DSEPortfolioModel;
   utt: UTTModel;
   car: CarModel;
   laptop: LaptopModel;

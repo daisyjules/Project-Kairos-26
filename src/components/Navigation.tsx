@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Shirt,
-  Palette,
+  Tag,
   Palmtree,
   Egg,
   Sprout,
@@ -16,6 +16,7 @@ import {
   Sparkles,
   ChevronDown,
   Layers,
+  Landmark,
 } from 'lucide-react';
 import { useKairos } from '../context/KairosContext';
 import { TabKey } from '../types';
@@ -41,16 +42,25 @@ export const Navigation: React.FC = () => {
     { key: 'diary', label: 'Diary', icon: <Sparkles className="h-4 w-4 text-amber-500" /> },
   ];
 
-  const projectTabs: { key: TabKey; label: string; desc: string; icon: React.ReactNode }[] = [
+  const projectTabs: {
+    key: TabKey;
+    label: string;
+    desc: string;
+    icon: React.ReactNode;
+    badge?: string;
+    badgeColor?: string;
+  }[] = [
     { key: 'klinfitz', label: 'Klin Fitz', desc: 'Laundry and recurring cashflow', icon: <Shirt className="h-4 w-4" /> },
-    { key: 'steazy', label: 'Steazy', desc: 'Clothing and accessories brand', icon: <Palette className="h-4 w-4" /> },
+    { key: 'steazy', label: 'Steazy', desc: 'Fashion brand: Tees, Totes, Caps', icon: <Tag className="h-4 w-4" /> },
     { key: 'zanzibar', label: 'Zanzibar Airbnb', desc: 'Hospitality joint venture', icon: <Palmtree className="h-4 w-4" /> },
     { key: 'poultry', label: 'Mom’s Poultry', desc: 'Family poultry pilot', icon: <Egg className="h-4 w-4" /> },
     { key: 'mama_kubwa', label: 'Mama Kubwa', desc: 'Crop and spice supply', icon: <Sprout className="h-4 w-4" /> },
-    { key: 'utt', label: 'UTT Wealth', desc: 'Long-term wealth building', icon: <TrendingUp className="h-4 w-4" /> },
+    { key: 'dse', label: 'DSE Shares', desc: 'Direct DSE market prices & ledger', icon: <Landmark className="h-4 w-4" /> },
+    { key: 'utt', label: 'UTT Liquid Fund', desc: 'Liquid reserve & compounding', icon: <TrendingUp className="h-4 w-4" /> },
     {
       key: 'loan',
       label: 'Debt & Solvency',
+      desc: '120-month debt service & DSCR',
       icon: <CreditCard className="h-4 w-4" />,
       badge: masterCalc.dscr < 1.0 ? 'Deficit' : undefined,
       badgeColor: 'bg-rose-600 text-white',

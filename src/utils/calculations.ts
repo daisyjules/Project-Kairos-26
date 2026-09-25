@@ -1,8 +1,10 @@
 import {
   AllocationBreakdown,
   KlinFitzModel,
+  SteazyModel,
   ZanzibarAirbnbModel,
   PoultryModel,
+  DSEPortfolioModel,
   UTTModel,
   CarModel,
   LaptopModel,
@@ -88,6 +90,163 @@ export function calculateKlinFitz(model: KlinFitzModel, monthlyLoanPayment: numb
     annualROI,
     paybackMonths,
     debtCoverageRatio,
+  };
+}
+
+export interface SteazyCalculations {
+  unitCost: number;
+  weightedSellingPrice: number;
+  unitGrossProfit: number;
+  unitMarginPct: number;
+  grossMarginPct: number;
+  tshirtsProducedPerMonth: number;
+  tshirtsProducedPerYear: number;
+  monthlyRevenue: number;
+  monthlyCOGS: number;
+  monthlyGrossProfit: number;
+  monthlyOperatingExpenses: number;
+  monthlyNetProfit: number;
+  netMarginPct: number;
+  annualRevenue: number;
+  annualCOGS: number;
+  annualGrossProfit: number;
+  annualNetProfit: number;
+  breakEvenTshirtsPerMonth: number;
+  annualROI: number;
+  paybackMonths: number;
+}
+
+export function calculateSteazy(model: SteazyModel): SteazyCalculations {
+  const unitCost =
+    (model.blankCostPerUnit || 0) +
+    (model.printingCostPerUnit || 0) +
+    (model.tagPackagingCostPerUnit || 0);
+
+  const retailPct = Math.min(100, Math.max(0, model.retailSalesPct ?? 80)) / 100;
+  const wholesalePct = 1 - retailPct;
+
+  const weightedSellingPrice =
+    model.retailSellingPrice * retailPct + model.wholesaleSellingPrice * wholesalePct;
+
+  const unitGrossProfit = weightedSellingPrice - unitCost;
+  const unitMarginPct = weightedSellingPrice > 0 ? (unitGrossProfit / weightedSellingPrice) * 100 : 0;
+
+  const tshirtsProducedPerMonth = model.tshirtsProducedPerMonth || 0;
+  const tshirtsProducedPerYear = tshirtsProducedPerMonth * 12;
+
+  const monthlyRevenue = tshirtsProducedPerMonth * weightedSellingPrice;
+  const monthlyCOGS = tshirtsProducedPerMonth * unitCost;
+  const monthlyGrossProfit = monthlyRevenue - monthlyCOGS;
+  const grossMarginPct = monthlyRevenue > 0 ? (monthlyGrossProfit / monthlyRevenue) * 100 : 0;
+  const monthlyOperatingExpenses = model.monthlyOperatingExpenses || 0;
+  const monthlyNetProfit = monthlyGrossProfit - monthlyOperatingExpenses;
+  const netMarginPct = monthlyRevenue > 0 ? (monthlyNetProfit / monthlyRevenue) * 100 : 0;
+
+  const annualRevenue = monthlyRevenue * 12;
+  const annualCOGS = monthlyCOGS * 12;
+  const annualGrossProfit = monthlyGrossProfit * 12;
+  const annualNetProfit = monthlyNetProfit * 12;
+
+  const contributionMarginPerUnit = Math.max(0, weightedSellingPrice - unitCost);
+  const breakEvenTshirtsPerMonth =
+    contributionMarginPerUnit > 0 ? Math.ceil(monthlyOperatingExpenses / contributionMarginPerUnit) : 0;
+
+  const annualROI = model.initialCapital > 0 ? (annualNetProfit / model.initialCapital) * 100 : 0;
+  const paybackMonths =
+    monthlyNetProfit > 0 ? Number((model.initialCapital / monthlyNetProfit).toFixed(1)) : 999;
+
+  return {
+    unitCost,
+    weightedSellingPrice,
+    unitGrossProfit,
+    unitMarginPct,
+    grossMarginPct,
+    tshirtsProducedPerMonth,
+    tshirtsProducedPerYear,
+    monthlyRevenue,
+    monthlyCOGS,
+    monthlyGrossProfit,
+    monthlyOperatingExpenses,
+    monthlyNetProfit,
+    netMarginPct,
+    annualRevenue,
+    annualCOGS,
+    annualGrossProfit,
+    annualNetProfit,
+    breakEvenTshirtsPerMonth,
+    annualROI,
+    paybackMonths,
+  };
+}
+
+export interface DSEPortfolioCalculations {
+  totalInvestedCapital: number;
+  totalMarketValue: number;
+  totalUnrealizedGainLoss: number;
+  totalGainLoss: number;
+  totalGainLossPct: number;
+  annualEstimatedDividends: number;
+  weightedDividendYieldPct: number;
+  totalLiquidAndShares: number;
+  totalPortfolioValue: number;
+  uninvestedCash: number;
+  milestones: Array<{
+    threshold: number;
+    label: string;
+    reached: boolean;
+  }>;
+  highestReachedMilestone: number | null;
+}
+
+export function calculateDSEPortfolio(portfolio: DSEPortfolioModel): DSEPortfolioCalculations {
+  const holdings = portfolio?.holdings || [];
+  let totalInvestedCapital = 0;
+  let totalMarketValue = 0;
+  let annualEstimatedDividends = 0;
+
+  holdings.forEach((h) => {
+    const cost = (h.sharesHeld || 0) * (h.buyPrice || 0);
+    const market = (h.sharesHeld || 0) * (h.currentPrice || 0);
+    totalInvestedCapital += cost;
+    totalMarketValue += market;
+    annualEstimatedDividends += market * (((h.dividendYieldPct || 0)) / 100);
+  });
+
+  const totalUnrealizedGainLoss = totalMarketValue - totalInvestedCapital;
+  const totalGainLoss = totalUnrealizedGainLoss;
+  const totalGainLossPct =
+    totalInvestedCapital > 0 ? (totalUnrealizedGainLoss / totalInvestedCapital) * 100 : 0;
+
+  const weightedDividendYieldPct =
+    totalMarketValue > 0 ? (annualEstimatedDividends / totalMarketValue) * 100 : 0;
+
+  const uninvestedCash = portfolio?.cashBalance || 0;
+  const totalLiquidAndShares = totalMarketValue + uninvestedCash;
+  const totalPortfolioValue = totalLiquidAndShares;
+
+  const milestoneTargets = [5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000];
+  const milestones = milestoneTargets.map((threshold) => ({
+    threshold,
+    label: `${(threshold / 1_000_000).toFixed(0)}M TZS`,
+    reached: totalLiquidAndShares >= threshold,
+  }));
+
+  const reachedList = milestones.filter((m) => m.reached);
+  const highestReachedMilestone = reachedList.length > 0 ? reachedList[reachedList.length - 1].threshold : null;
+
+  return {
+    totalInvestedCapital,
+    totalMarketValue,
+    totalUnrealizedGainLoss,
+    totalGainLoss,
+    totalGainLossPct,
+    annualEstimatedDividends,
+    weightedDividendYieldPct,
+    totalLiquidAndShares,
+    totalPortfolioValue,
+    uninvestedCash,
+    milestones,
+    highestReachedMilestone,
   };
 }
 
@@ -234,6 +393,11 @@ export interface UTTCalculations {
   valueAfter5Years: number;
   valueAfter10Years: number;
   totalGains10Years: number;
+  totalFutureValue: number;
+  projectedValue5Y: number;
+  isLiquid: boolean;
+  liquidityTurnaround: string;
+  liquidityTurnaroundDays: number;
 }
 
 export function calculateUTT(model: UTTModel): UTTCalculations {
@@ -274,6 +438,11 @@ export function calculateUTT(model: UTTModel): UTTCalculations {
     valueAfter5Years,
     valueAfter10Years,
     totalGains10Years,
+    totalFutureValue: valueAfter10Years,
+    projectedValue5Y: valueAfter5Years,
+    isLiquid: true,
+    liquidityTurnaround: 'T+1 (24–48h to M-Pesa / Bank)',
+    liquidityTurnaroundDays: model.liquidityTurnaroundDays || 1,
   };
 }
 
@@ -377,6 +546,8 @@ export interface MasterCalculations {
   dscr: number;
   dscrStatus: 'CRITICAL' | 'FRAGILE' | 'IMPROVING' | 'HEALTHY';
   totalInvestmentValue: number;
+  totalLiquidCapital: number;
+  liquidRunwayMonths: number;
 }
 
 export function calculateMasterDashboard(
@@ -387,7 +558,9 @@ export function calculateMasterDashboard(
   utt: UTTCalculations,
   car: CarCalculations,
   laptop: LaptopModel,
-  loan: LoanModel
+  loan: LoanModel,
+  steazy?: SteazyCalculations,
+  dse?: DSEPortfolioCalculations
 ): MasterCalculations {
   const startingCapital = allocations.startingCapital;
 
@@ -424,22 +597,33 @@ export function calculateMasterDashboard(
   const lifestyleProductivityCapital = allocations.car;
   const lifestylePct = startingCapital > 0 ? (lifestyleProductivityCapital / startingCapital) * 100 : 0;
 
-  // Total Business Monthly Revenue (Klin Fitz + Zanzibar User Share of revenue + Poultry monthly revenue)
+  // Total Business Monthly Revenue (Klin Fitz + Zanzibar User Share of revenue + Poultry monthly revenue + Steazy)
   const zanzibarUserRevenue = zanzibar.grossRevenue * (zanzibar.userOwnershipPct / 100);
-  const poultryMonthlyRevenue = poultry.expectedSalesRevenue / (12 / (poultry.expectedSalesRevenue > 0 ? 4 : 1));
+  const poultryMonthlyRevenue = (poultry.expectedSalesRevenue * 4) / 12;
+  const steazyMonthlyRevenue = steazy ? steazy.monthlyRevenue : 0;
   const monthlyBusinessRevenue =
-    klinFitz.totalMonthlyRevenue + zanzibarUserRevenue + (poultry.expectedSalesRevenue * 4) / 12;
+    klinFitz.totalMonthlyRevenue + zanzibarUserRevenue + poultryMonthlyRevenue + steazyMonthlyRevenue;
 
-  // Total Business Monthly Operating Profit (Klin Fitz + Zanzibar User profit + Poultry monthly profit)
+  // Total Business Monthly Operating Profit (Klin Fitz + Zanzibar User profit + Poultry monthly profit + Steazy net profit)
+  const steazyMonthlyProfit = steazy ? steazy.monthlyNetProfit : 0;
   const monthlyBusinessProfit =
-    klinFitz.monthlyOperatingProfit + zanzibar.userProfitShare + poultry.monthlyEquivalentProfit;
+    klinFitz.monthlyOperatingProfit + zanzibar.userProfitShare + poultry.monthlyEquivalentProfit + steazyMonthlyProfit;
 
   const monthlyLoanRepayment = loan.monthlyRepayment;
   const monthlyCashFlowAfterDebt = monthlyBusinessProfit - monthlyLoanRepayment;
 
   const loanCalc = calculateLoan(loan, monthlyBusinessProfit);
 
-  const totalInvestmentValue = allocations.utt; // starting value, compounding separately
+  const dseValue = dse ? dse.totalMarketValue : 0;
+  const dseCash = dse ? dse.uninvestedCash : 0;
+  const totalInvestmentValue = allocations.utt + dseValue; // starting UTT + DSE portfolio value
+
+  // UTT is a liquid open-ended fund with daily NAV & 24-48h redemption.
+  // Total Liquid Capital = Unallocated bank reserve + UTT liquid fund + DSE brokerage cash
+  const totalLiquidCapital = Math.max(0, remainingReserve) + allocations.utt + dseCash;
+  const liquidRunwayMonths = monthlyLoanRepayment > 0
+    ? Number((totalLiquidCapital / monthlyLoanRepayment).toFixed(1))
+    : 0;
 
   return {
     startingCapital,
@@ -458,5 +642,7 @@ export function calculateMasterDashboard(
     dscr: loanCalc.dscr,
     dscrStatus: loanCalc.dscrStatus,
     totalInvestmentValue,
+    totalLiquidCapital,
+    liquidRunwayMonths,
   };
 }

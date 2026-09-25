@@ -17,8 +17,10 @@ export const QuickNumbersModal: React.FC<QuickNumbersModalProps> = ({ isOpen, on
     updatePoultry,
     updateUTT,
     updateLoan,
+    updateSteazy,
     masterCalc,
     klinFitzCalc,
+    steazyCalc,
     zanzibarCalc,
     poultryCalc,
     uttCalc,
@@ -106,7 +108,7 @@ export const QuickNumbersModal: React.FC<QuickNumbersModalProps> = ({ isOpen, on
 
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                  UTT Bond Fund (TZS)
+                  UTT Liquid Fund (TZS)
                 </label>
                 <input
                   type="number"
@@ -331,10 +333,10 @@ export const QuickNumbersModal: React.FC<QuickNumbersModalProps> = ({ isOpen, on
                 5. Loan Parameters & Debt Service
               </h3>
               <span className="font-mono-num text-xs font-bold text-rose-700 dark:text-rose-400">
-                DSCR: {loanCalc.dscr.toFixed(2)}x (Coverage)
+                DSCR: {(loanCalc?.dscr ?? 0).toFixed(2)}x (Coverage)
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
                   Loan Principal (TZS)
@@ -349,13 +351,27 @@ export const QuickNumbersModal: React.FC<QuickNumbersModalProps> = ({ isOpen, on
               </div>
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
-                  Annual Interest Rate (%)
+                  Tenure (Months)
+                </label>
+                <input
+                  type="number"
+                  step={6}
+                  min={12}
+                  max={120}
+                  value={state.loan.tenureMonths || 120}
+                  onChange={(e) => updateLoan({ tenureMonths: Number(e.target.value) })}
+                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Annual Interest (%)
                 </label>
                 <input
                   type="number"
                   step={0.5}
-                  value={state.loan.annualInterestRatePct}
-                  onChange={(e) => updateLoan({ annualInterestRatePct: Number(e.target.value) })}
+                  value={state.loan.interestRateAnnualPct || 18.5}
+                  onChange={(e) => updateLoan({ interestRateAnnualPct: Number(e.target.value) })}
                   className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600"
                 />
               </div>
@@ -369,6 +385,74 @@ export const QuickNumbersModal: React.FC<QuickNumbersModalProps> = ({ isOpen, on
                   value={state.loan.monthlyRepayment}
                   onChange={(e) => updateLoan({ monthlyRepayment: Number(e.target.value) })}
                   className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 6: Steazy Fashion Brand Assumptions */}
+          <div className="rounded-2xl border border-stone-200 p-5 dark:border-stone-800 bg-stone-50/40 dark:bg-stone-900/40">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-editorial text-base font-bold text-stone-900 dark:text-stone-100">
+                6. Steazy Fashion Brand Assumptions
+              </h3>
+              <span className="font-mono-num text-xs font-bold text-violet-800 dark:text-violet-300">
+                Net Profit: +{formatTZS(steazyCalc.monthlyNetProfit)}/mo ({(steazyCalc.netMarginPct ?? 0).toFixed(0)}% Margin)
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  T-Shirts Produced/mo
+                </label>
+                <input
+                  type="number"
+                  step={20}
+                  min={10}
+                  value={state.steazy.tshirtsProducedPerMonth}
+                  onChange={(e) => updateSteazy({ tshirtsProducedPerMonth: Number(e.target.value) })}
+                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-violet-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Selling Price / Tee (TZS)
+                </label>
+                <input
+                  type="number"
+                  step={1000}
+                  value={state.steazy.retailSellingPrice || 35000}
+                  onChange={(e) => updateSteazy({ retailSellingPrice: Number(e.target.value) })}
+                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-violet-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Blank + Print Cost / Tee
+                </label>
+                <input
+                  type="number"
+                  step={500}
+                  value={(state.steazy.blankCostPerUnit || 12000) + (state.steazy.printingCostPerUnit || 4000)}
+                  onChange={(e) => {
+                    const totalUnit = Number(e.target.value);
+                    const blank = Math.round(totalUnit * 0.75);
+                    const print = totalUnit - blank;
+                    updateSteazy({ blankCostPerUnit: blank, printingCostPerUnit: print });
+                  }}
+                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-violet-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 block mb-1">
+                  Monthly Operating Overhead (TZS)
+                </label>
+                <input
+                  type="number"
+                  step={50000}
+                  value={state.steazy.monthlyOperatingExpenses}
+                  onChange={(e) => updateSteazy({ monthlyOperatingExpenses: Number(e.target.value) })}
+                  className="w-full rounded-xl border border-stone-300 bg-white px-3 py-1.5 font-mono-num text-sm font-bold text-stone-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-violet-600"
                 />
               </div>
             </div>
